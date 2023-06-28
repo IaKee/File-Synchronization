@@ -1,0 +1,48 @@
+
+#include <iostream>
+#include <regex>
+#include <cstdlib>
+#include <string>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#include "utils.hpp"
+
+void insert_prefix()
+{
+    std::cout << "\t#> ";
+    std::cout.flush(); // flush the output to ensure the prefix appears immediately
+}
+
+bool is_valid_IP(const std::string& ip_address) 
+{
+    // checks if given ip is valid by the following regex pattern
+    std::regex pattern(R"(^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$)");
+    return std::regex_match(ip_address, pattern);
+}
+
+bool is_valid_port(int port) 
+{
+    // checks if the given port is in the port range
+    int portValue = port;
+    return portValue >= 0 && portValue <= 65535;
+}
+
+bool is_valid_path(std::string path)
+{
+    // checks if the informed folder does exist within the file system
+    return (std::filesystem::exists(path)) ? true : false;
+}
+
+bool is_valid_username(const std::string& username) 
+{
+    // checks if the username is alphanumeric and does not have any symbols (including spaces)
+    for(char c : username) 
+    {
+        if (!std::isalnum(c)) 
+        {
+            return false;
+        }
+    }
+    return true;
+}
