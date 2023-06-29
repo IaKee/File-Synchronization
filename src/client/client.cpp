@@ -128,15 +128,13 @@ int main(int argc, char* argv[])
     // starts async command line reader - giving appropriate command callbacks
     try
     {
-        boost::asio::io_context async_io_context;
 
-        command_reader::CommandReader user_interface(async_io_context, commands);
+        command_reader::CommandReader user_interface(commands);
 
         insert_prefix();
 
         user_interface.start();
-        async_io_context.run();
-
+    
         user_interface.stop();
     }
     catch(const std::exception& e)

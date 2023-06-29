@@ -7,9 +7,9 @@
       "request": "launch",
       "args": [],
       "stopAtEntry": false,
-      "externalConsole": true,
-      "cwd": "d:/Documentos/Escola/UFRGS/decimo semestre/SISOPII/File-Synchronization/src/client",
-      "program": "d:/Documentos/Escola/UFRGS/decimo semestre/SISOPII/File-Synchronization/src/client/build/Debug/outDebug",
+      "externalConsole": false,  // Alterado para false
+      "cwd": "${workspaceFolder}/src",  // Alterado para o caminho do diretório desejado
+      "program": "${workspaceFolder}/build/Debug/outDebug",
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
       "setupCommands": [

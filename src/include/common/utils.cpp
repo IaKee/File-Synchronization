@@ -10,8 +10,10 @@
 
 void insert_prefix()
 {
+    /* Inserts a prefix on the terminal to differentiate when the program is
+    actually running from the system default*/
     std::cout << "\t#> ";
-    std::cout.flush(); // flush the output to ensure the prefix appears immediately
+    std::cout.flush();
 }
 
 bool is_valid_IP(const std::string& ip_address) 
