@@ -1,147 +1,219 @@
+// c++
 #include <iostream>
 #include <filesystem>
 #include <stdexcept>
 #include <string>
-#include <pthread.h>
-#include <semaphore.h>
-#include <boost/asio.hpp>
+#include <atomic>
 
-#include "client_commands.hpp"
-//#include "../include/common/packet.h"
+// multithreading
+#include <atomic>
+#include <mutex>
+#include <condition_variable>
+#include <thread>
+
+
+// argument parsing
 #include "../include/common/cxxopts.hpp"
-#include "../include/common/constants.hpp"
-#include "../include/common/utils.hpp"
-#include "../include/common/command_reader.hpp"
 
+// local
+#include "client_commands.hpp"
+#include "../include/common/lang.hpp"
+#include "../include/common/user_interface.hpp"
+#include "../include/common/connection.hpp"
+#include "../include/common/utils.hpp"
+
+
+// namespace
+using cxxopts::Options;
+using cxxopts::ParseResult;
 
 class Client
 {
     private:
-        std::string sync_dir;
-        std::string username;
-        std::string server_address;
+        // connection
+        std::string username_;
+        std::string server_address_;
+        int server_port_;
+        connection::Connection connection_;
+
+        // file management
+        std::string sync_dir_;
+
+        // input
+        user_interface::UserInterface UI_; 
+
+        // synchronization
+        std::mutex mutex_;
+        std::condition_variable buffer_status_;
+        std::condition_variable collector_status_;
+        std::string command_buffer_;
+        std::list<std::string> sanitized_commands_;
+
+        // program flow
+        bool running_ = true;
+
+        bool validate_arguments_()
+        {
+            std::string error_description = "";
+            
+            if(!is_valid_username(this->username_))
+                error_description = ERROR_PARSING_USERNAME;
+            if(!is_valid_IP(this->server_address_))
+                error_description = ERROR_PARSING_IP;
+            if(!is_valid_port(this->server_port_))
+                error_description = ERROR_PARSING_PORT;
+
+            if(error_description != "")
+            {   
+                std::cout << PROMPT_PREFIX << error_description << std::endl;
+                std::cout << PROMPT_PREFIX << RUN_INFO << std::endl;
+                running_ = false;
+                return false;
+            }
+            return true;
+        }
 
     public:
-        // simple setters
-        void set_username(std::string new_username){username = new_username;}
-        
-        // setters with some treatment
-        void set_sync_dir(std::string new_directory)
+        // on init
+        Client(const string& u, const string& add, const int& p)
+            :   username_(u), 
+                server_address_(add), 
+                server_port_(p), 
+                UI_(mutex_, buffer_status_, collector_status_, command_buffer_, sanitized_commands_),
+                connection_(),
+                running_(true)
         {
-            // TODO: if invlaid, ask for new path, or show suggestion
+            // initialization sequence
+            std::string machine_name = get_machine_name();
+            std::cout << CLIENT_PROGRAM_NAME << " " << CLIENT_PROGRAM_VERSION <<
+                " started at " << machine_name << std::endl;
+
+            bool arg_ok = validate_arguments_();  // user, server address and port
+            
+            if(!arg_ok)
+            {
+                throw std::invalid_argument(ERROR_PARSING_CRITICAL);
+            }
+
+            // creates socket
+            bool sock_ok = connection_.create_socket();
+            if(!sock_ok)
+            {
+                running_ = false;
+                throw std::runtime_error(ERROR_SOCK_CREATING);
+            }
+
+            // resolves host name
+            server_address_ = connection_.get_host_by_name(add);
+
+            // connects to server
+            //connection_.connect_to_server(server_address_, server_port_);
+
+            
+            UI_.start();
+        };
+
+        // on destroy
+        ~Client()
+        {
+            // TODO: kill child threads here
+            UI_.stop();
+        }
+
+        // attributes
+        std::string command_buffer;
+        std::list<std::thread> thread_list;
+
+        void set_sync_dir(std::string new_directory) 
+        {
+            // TODO: if invalid, ask for new path, or show suggestion
 
             // ensures a valid directory as syncDir
             if(!is_valid_path(new_directory))
-                throw std::runtime_error("invalidpath");
+                running_ = false;
+                throw std::runtime_error(ERROR_PATH_INVALID);
+
         }
-        
-        // getters
-        std::string get_username(){return username;}
-
-        // other
-        
-
+     
+        void main_loop()
+        {
+            while(running_)
+            {
+                std::unique_lock<std::mutex> lock(mutex_);
+                collector_status_.wait(lock, [this]() 
+                { 
+                    return command_buffer_.size() > 0 || !running_; 
+                });
+            }
+        }
 };
 
 int main(int argc, char* argv[]) 
 {
-    // TODO: parse arguments
-    // TODO: print sync dir
-    // TODO: look for further commands
-    // TODO: error treatment
-    // TODO: interface
-    // TODO: sistema de username
-
     // main attributes
     std::string username;
     std::string server_ip;
     int port;
     bool show_help = false;  // defaults false
 
-    // expected program arguments definition
-    cxxopts::Options options(PROGRAM_NAME, PROGRAM_DESCRIPTION);
+    // expected program arguments - definition
+    Options options(CLIENT_PROGRAM_NAME, CLIENT_PROGRAM_DESCRIPTION);
     options.add_options()
         ("u,username", USERNAME_DESCRIPTION, cxxopts::value<std::string>(username))
         ("s,server_ip", SERVER_IP_DESCRIPTION, cxxopts::value<std::string>(server_ip))
         ("p,port", SERVER_PORT_DESCRIPTION, cxxopts::value<int>(port))
         ("h,help", HELP_DESCRIPTION, cxxopts::value<bool>(show_help))
-        ("e, example", EXAMPLE_USAGE);
+        ("e, example", CLIENT_EXAMPLE_USAGE);
 
     // parses and verifies recieved program arguments
-    cxxopts::ParseResult result;
-    try 
+    ParseResult result;
+    try
     {
         auto result = options.parse(argc, argv);
 
         
         // help command-line option
-        if (show_help) 
+        if(show_help)
         {
-            std::cout << options.help() << std::endl;
+            std::cout << PROMPT_PREFIX << options.help() << std::endl;
             return 0;
         }
 
         // verifying if all required options were provided
-        if (result.count("username") == 0 || result.count("server_ip") == 0 || result.count("port") == 0) 
+        if (result.count("username") == 0 || result.count("server_ip") == 0 || result.count("port") == 0)
         {
             // even not being parsed by using cxxopts expected layout, arguments may still be there
             // tries to parse, and later validates them
             
             if(argc < 4)
             {
-                std::cout << MISSING_COMMAND_OPTIONS << std::endl;
-                std::cout << MAIN_USAGE << std::endl;
-                std::cout << RUN_INFO << std::endl;
+                std::cout << PROMPT_PREFIX << ERROR_PARSING_MISSING << std::endl;
+                std::cout << PROMPT_PREFIX << CLIENT_USAGE_LAYOUT << std::endl;
+                std::cout << PROMPT_PREFIX << RUN_INFO << std::endl;
                 return -1;
             }
 
             username = argv[1];
             server_ip = argv[2];
             port = std::stoi(argv[3]);
-        }
-
-        // command line validation
-        if(!is_valid_username(username))
+        } 
+        else 
         {
-            std::cout << USERNAME_ERROR << std::endl;
-            std::cout << RUN_INFO << std::endl;
-            return -1;
+            // arguments provided
+            username = result["username"].as<std::string>();
+            server_ip = result["server_ip"].as<std::string>();
+            port = result["port"].as<int>();
         }
-        if(!is_valid_IP(server_ip))
-        {
-            std::cout << IP_ERROR << std::endl;
-            std::cout << RUN_INFO << std::endl;
-            return -1;
-        }
-        if(!is_valid_port(port))
-        {
-            std::cout << PORT_ERROR << std::endl;
-            std::cout << RUN_INFO << std::endl;
-            return -1;
-        }
-    } catch (std::exception& e) 
+    } 
+    catch (std::exception& e) 
     {
-        std::cerr << ERROR_PARSING << e.what() << std::endl;
+        std::cerr << PROMPT_PREFIX << ERROR_PARSING_CRITICAL << e.what() << std::endl;
         return -1;
     }
-
-    // starts async command line reader - giving appropriate command callbacks
-    try
-    {
-
-        command_reader::CommandReader user_interface(commands);
-
-        insert_prefix();
-
-        user_interface.start();
     
-        user_interface.stop();
-    }
-    catch(const std::exception& e)
-    {
-        std::cerr << e.what() << '\n';
-    }
-    
+    Client app(username, server_ip, port);
+    app.main_loop();
+
     return 0;
 }
 

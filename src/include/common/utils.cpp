@@ -3,9 +3,9 @@
 #include <regex>
 #include <cstdlib>
 #include <string>
-#include <sys/socket.h>
-#include <arpa/inet.h>
 #include <unistd.h>
+#include <filesystem>
+
 #include "utils.hpp"
 
 void insert_prefix()
@@ -20,7 +20,12 @@ bool is_valid_IP(const std::string& ip_address)
 {
     // checks if given ip is valid by the following regex pattern
     std::regex pattern(R"(^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$)");
-    return std::regex_match(ip_address, pattern);
+    
+    if(std::regex_match(ip_address, pattern))
+        return true;
+    else if(ip_address == "localhost")
+        return true;
+    return false;
 }
 
 bool is_valid_port(int port) 
@@ -47,4 +52,16 @@ bool is_valid_username(const std::string& username)
         }
     }
     return true;
+}
+
+std::string get_machine_name()
+{
+    char hostname[256];
+    if (gethostname(hostname, sizeof(hostname)) != -1) 
+    {
+        return hostname;
+    } else 
+    {
+        return "UNKNOWN";
+    }
 }

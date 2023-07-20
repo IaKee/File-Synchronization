@@ -60,7 +60,14 @@ void exit_command(const std::string& arg)
     // Implementação para o comando de exit
 }
 
-std::vector<std::pair<std::string, std::function<void(const std::string&)>>> commands = 
+void help_command(const std::string& arg)
+{
+    insert_prefix();
+    std::cout << "Exit command executed." << std::endl;
+    insert_prefix();
+}
+
+std::vector<std::pair<std::string, std::function<void(const std::string&)>>> command_list = 
 {
     {"upload", upload_command},
     {"download", download_command},
@@ -68,5 +75,6 @@ std::vector<std::pair<std::string, std::function<void(const std::string&)>>> com
     {"list_server", list_server_command},
     {"list_client", list_client_command},
     {"get_sync_dir", get_sync_dir_command},
-    {"exit", exit_command}
+    {"exit", exit_command},
+    {"help", help_command}
 };

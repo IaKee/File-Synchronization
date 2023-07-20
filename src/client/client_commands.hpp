@@ -1,5 +1,4 @@
-#ifndef CLIENT_COMMANDS_HPP
-#define CLIENT_COMMANDS_HPP
+#pragma once
 
 #include <string>
 #include <vector>
@@ -13,6 +12,4 @@ void list_client_command(const std::string& arg);
 void get_sync_dir_command(const std::string& arg);
 void exit_command(const std::string& arg);
 
-extern std::vector<std::pair<std::string, std::function<void(const std::string&)>>> commands;
-
-#endif
+extern std::vector<std::pair<std::string, std::function<void(const std::string&)>>> command_list;
