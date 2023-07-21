@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <string>
 #include <atomic>
+#include <cstdlib>
 
 // multithreading
 #include <atomic>
@@ -109,7 +110,7 @@ class Client
             // connects to server
             //connection_.connect_to_server(server_address_, server_port_);
 
-            
+            // initializes user interface last
             UI_.start();
         };
 
@@ -117,7 +118,8 @@ class Client
         ~Client()
         {
             // TODO: kill child threads here
-            UI_.stop();
+            // TODO: close connection here
+            //quit();
         }
 
         // attributes
@@ -130,21 +132,86 @@ class Client
 
             // ensures a valid directory as syncDir
             if(!is_valid_path(new_directory))
+            {
                 running_ = false;
                 throw std::runtime_error(ERROR_PATH_INVALID);
+            }
 
         }
-     
+
+        void process_input()
+        {
+            // process input buffer and calls methods accordingly
+            int nargs = sanitized_commands_.size();
+
+            switch (nargs)
+            {
+                case 0:
+                    break;
+                case 1:
+                    if(sanitized_commands_.front() == "exit")
+                    {
+                        quit();
+                    }
+                    else
+                        std::cout << PROMPT_PREFIX_CLIENT << ERROR_COMMAND_INVALID << std::endl;
+
+                    break;
+                case 2:
+                    break;
+                
+                default:
+                    //std::cout << PROMPT_PREFIX << ERROR_COMMAND_USAGE << sanitized_commands_.front() << std::endl;
+                    std::cout << PROMPT_PREFIX_CLIENT << ERROR_COMMAND_INVALID << std::endl;
+                    break;
+            }
+        }
+
         void main_loop()
         {
             while(running_)
-            {
+            {   
+                // inserts promt prefix before que actual user command
+                std::cout << PROMPT_PREFIX;
+                std::cout.flush();
+
+                // waits for the buffer to actually have something
                 std::unique_lock<std::mutex> lock(mutex_);
+
+                std::cout << "consumer: about to wait" << std::endl;
                 collector_status_.wait(lock, [this]() 
                 { 
                     return command_buffer_.size() > 0 || !running_; 
                 });
+
+
+                process_input();
+
+                // resets shared buffers
+                command_buffer_ = "";
+                sanitized_commands_.clear();
+                std::cout << "hello from consumer!" << std::endl;
+
+                // notifies UI_ that the buffer is free to be used again
+                buffer_status_.notify_one();
             }
+
+        }
+
+        void quit()
+        {
+            // closing sequence
+            std::cout << PROMPT_PREFIX_CLIENT << EXIT_MESSAGE << std::endl;
+            
+            running_ = false;
+            buffer_status_.notify_all();
+            UI_.stop();
+
+            command_buffer_ = "";
+            sanitized_commands_.clear();
+            buffer_status_.notify_all();
+
+            //exit(0);
         }
 };
 

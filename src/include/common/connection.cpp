@@ -30,7 +30,7 @@ bool Connection::create_socket()
 {
     // creates a new socket for communication
     // by using SOCK_STREAM, TCP is specified
-    std::cout << PROMPT_PREFIX << SOCK_CREATING;
+    std::cout << PROMPT_PREFIX_CLIENT << SOCK_CREATING;
     TTR::Timer timer;
 
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -39,7 +39,7 @@ bool Connection::create_socket()
 
 void Connection::connect_to_server(const string& ip_addr, int port) 
 {   
-    std::cout << PROMPT_PREFIX << CONNECTING_TO_SERVER;
+    std::cout << PROMPT_PREFIX_CLIENT << CONNECTING_TO_SERVER;
     std::cout.flush();
     TTR::Timer timer;
 
@@ -87,7 +87,7 @@ void Connection::close_socket()
 
 string Connection::get_host_by_name(const string& host_name) 
 {   
-    std::cout << PROMPT_PREFIX << RESOLVING_HOST;
+    std::cout << PROMPT_PREFIX_CLIENT << RESOLVING_HOST;
     std::cout.flush();
 
     TTR::Timer timer;

@@ -31,7 +31,6 @@ namespace user_interface
             
             void start();
             void stop();
-            std::pair<std::string, std::list<std::string>> collect_buffer();
 
             // synchronization
             std::mutex& mutex_;
@@ -43,6 +42,8 @@ namespace user_interface
         private:
             void sanitize_user_input();
             void input_loop();
+            void enable_echo();
+            void disable_echo();
 
             // program flow
             bool running_;

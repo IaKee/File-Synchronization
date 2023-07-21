@@ -51,9 +51,10 @@ const std::string ERROR_READING_CRITICAL = "Critical error reading command line!
 
 const std::string SOCK_CREATING = "Creating socket...";
 const std::string RESOLVING_HOST = "Resolving host...";
-const std::string CONNECTING_TO_SERVER = "Connecting to server...";
+const std::string CONNECTING_TO_SERVER = "Attempting connection to server...";
 const std::string EXIT_MESSAGE = "Exiting the program...";
 
 // other
 const std::string PROMPT_PREFIX = "\t#> ";
+const std::string PROMPT_PREFIX_CLIENT = "\t[CLIENT] ";
 const std::string PROMPT_CLS = "\033[2J";

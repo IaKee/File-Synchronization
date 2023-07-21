@@ -7,6 +7,7 @@
 #include <list>
 #include <functional>
 #include <sstream>
+#include <termios.h>
 
 // sync
 #include <condition_variable>
@@ -60,32 +61,13 @@ void UserInterface::stop()
         throw std::runtime_error(ERROR_COMMAND_INVALID + "stop()");
     }
 
-    // atomic section to lock the mutex to block the interface loop
-    {
-        running_ = false;
-        buffer_status_.notify_all();  // notifies other thread to quit waiting
-        input_thread_.join();
-    }
-}
 
-std::pair<std::string, std::list<std::string>> UserInterface::collect_buffer() 
-{
-    std::unique_lock<std::mutex> lock(mutex_);
+    running_ = false;
+    buffer_status_.notify_all();  // notifies other thread to quit waiting
+    //collector_status_.notify_all();
+    input_thread_.join();
 
-    collector_status_.wait(lock, [this]() 
-    {
-        return command_buffer_.size() > 0;
-    });
-
-    // collects the command buffers to local copies
-    std::string commands = command_buffer_;
-    std::list<std::string> sanitized = sanitized_commands_;
-
-    // resets buffers for the next iteration (safe manipulation)
-    command_buffer_ = "";
-    sanitized_commands_.clear();
-
-    return std::make_pair(commands, sanitized);
+    std::cout << "ui closed" << std::endl;
 }
 
 void UserInterface::input_loop()
@@ -94,6 +76,7 @@ void UserInterface::input_loop()
     {   
         std::unique_lock<std::mutex> lock(mutex_);
         
+        std::cout << "producer: about to wait" << std::endl;
         buffer_status_.wait(
             lock, [this]() 
             {
@@ -121,6 +104,8 @@ void UserInterface::input_loop()
         // checks for reading events on stdin
         if (FD_ISSET(input_descriptor_, &read_fds_))
         {   
+            std::cout << "hello from producer!" << std::endl;
+
             // sanitizes command line, for further processing
             sanitize_user_input();
 
@@ -146,4 +131,20 @@ void UserInterface::sanitize_user_input()
 
     // updates buffer
     command_buffer_ = line;
+}
+
+void UserInterface::disable_echo()
+{
+    struct termios t;
+    tcgetattr(STDIN_FILENO, &t);
+    t.c_lflag &= ~ECHO;
+    tcsetattr(STDIN_FILENO, TCSANOW, &t);
+}
+
+void UserInterface::enable_echo()
+{
+    struct termios t;
+    tcgetattr(STDIN_FILENO, &t);
+    t.c_lflag |= ECHO;
+    tcsetattr(STDIN_FILENO, TCSANOW, &t);
 }
