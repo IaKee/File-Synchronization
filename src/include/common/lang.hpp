@@ -57,4 +57,5 @@ const std::string EXIT_MESSAGE = "Exiting the program...";
 // other
 const std::string PROMPT_PREFIX = "\t#> ";
 const std::string PROMPT_PREFIX_CLIENT = "\t[CLIENT] ";
+const std::string PROMPT_PREFIX_SERVER = "\t[SERVER] ";
 const std::string PROMPT_CLS = "\033[2J";

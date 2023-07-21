@@ -21,10 +21,42 @@
 using namespace connection;
 
 Connection::Connection() 
-    :   sockfd(-1) 
+    :   sockfd_(-1) 
     {
         // nothing here
-    }
+    };
+
+
+bool Connection::createServer() {
+        backlog_ = 5;
+
+        struct sockaddr_in serverAddress;
+        memset(&serverAddress, 0, sizeof(serverAddress));
+        serverAddress.sin_family = AF_INET;
+        serverAddress.sin_addr.s_addr = htonl(INADDR_ANY);
+        serverAddress.sin_port = htons(port_);
+
+        std::cout << "Endereco do server: " << inet_ntoa(serverAddress.sin_addr) << std::endl;
+
+        if(bind(sockfd_, (struct sockaddr *)&serverAddress, sizeof(serverAddress)) == -1){
+            
+            std::cerr << "binding error" << std::endl;
+            close(sockfd_);
+            return false;
+        }
+
+        socklen_t addressLen = sizeof(serverAddress);
+        int addr = getsockname(sockfd_, (struct sockaddr*)&serverAddress, &addressLen);
+        std::cout << "Endereco do server: " << addr << std::endl;
+
+        if(listen(sockfd_, backlog_) == -1) {
+            std::cerr << "listening error" << port_ << std::endl;
+            close(sockfd_);
+        }
+        std::cout << "listening on port" << port_ << std::endl;
+        return true;
+        
+}
 
 bool Connection::create_socket() 
 {
@@ -33,8 +65,8 @@ bool Connection::create_socket()
     std::cout << PROMPT_PREFIX_CLIENT << SOCK_CREATING;
     TTR::Timer timer;
 
-    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    return sockfd != -1;
+    sockfd_ = socket(AF_INET, SOCK_STREAM, 0);
+    return sockfd_ != -1;
 }
 
 void Connection::connect_to_server(const string& ip_addr, int port) 
@@ -43,8 +75,8 @@ void Connection::connect_to_server(const string& ip_addr, int port)
     std::cout.flush();
     TTR::Timer timer;
 
-    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0) 
+    int sockfd_ = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd_ < 0) 
     {
         timer.cancel();
         throw std::runtime_error(ERROR_SOCK_CREATING);
@@ -61,28 +93,54 @@ void Connection::connect_to_server(const string& ip_addr, int port)
         throw std::runtime_error(ERROR_CONVERTING_IP);
     }
 
-    if (connect(sockfd, reinterpret_cast<sockaddr*>(&server_addr), sizeof(server_addr)) < 0) 
+    if (connect(sockfd_, reinterpret_cast<sockaddr*>(&server_addr), sizeof(server_addr)) < 0) 
     {
         timer.cancel();
         throw std::runtime_error(ERROR_CONNECTING_SERVER);
     }
 
-    // Now you have a connected socket (sockfd) that you can use for communication.
+    handle_connection();
+    // Now you have a connected socket (sockfd_) that you can use for communication.
 }
 
-int Connection::accept_connection() 
+int Connection::accept_connection() //Usado pelo servidor
 {
-    // Implementação do método
-    return 0;
-}
-
-void Connection::close_socket() 
-{
-    if (sockfd != -1) 
-    {
-        close(sockfd);
-        sockfd = -1;
+    struct sockaddr_in clientAddress;
+    socklen_t clientAddressLength = sizeof(clientAddress);
+    int client_socket = accept(client_socket, (struct sockaddr *)&clientAddress, &clientAddressLength);
+    if (client_socket == -1) {
+        std::cerr << "Error accepting connection." << std::endl;
+        return -1;
     }
+
+    return client_socket;
+}
+
+
+void Connection::handle_connection()
+{
+    const char *message = "message";
+    send(sockfd_, message, strlen(message),0);
+    
+    //...
+
+    //close(sockfd_);
+}
+
+void Connection::close_socket() //Usado pelo cliente
+{
+    if (sockfd_ != -1) 
+    {
+        close(sockfd_);
+        sockfd_ = -1;
+    }
+}
+
+ void Connection::closeServer() {
+        if (sockfd_ != -1) {
+            close(sockfd_);
+            sockfd_ = -1;
+        }
 }
 
 string Connection::get_host_by_name(const string& host_name) 
@@ -107,4 +165,9 @@ string Connection::get_host_by_name(const string& host_name)
     }
 
     return ip;
+}
+
+void Connection::set_port(int port)
+{
+    port_ = port;
 }

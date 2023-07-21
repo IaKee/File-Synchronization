@@ -1,3 +1,4 @@
+
 // Connection.hpp
 #pragma once
 
@@ -26,11 +27,20 @@ namespace connection
             Connection();
             bool create_socket();
             void connect_to_server(const string& ipAddress, int port);
-            int accept_connection();
             void close_socket();
-            string get_host_by_name(const string& host_name) ;
+            string get_host_by_name(const string& host_name);
+
+            void set_port(int port);
+            bool createServer();
+            void closeServer();
+            void handle_connection();
+            int accept_connection();
 
         private:
-            int sockfd;
+            int sockfd_;
+            int port_;
+            int backlog_;
+            int server_fd_;
+            
     };
 }

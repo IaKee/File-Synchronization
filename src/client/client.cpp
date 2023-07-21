@@ -108,7 +108,7 @@ class Client
             server_address_ = connection_.get_host_by_name(add);
 
             // connects to server
-            //connection_.connect_to_server(server_address_, server_port_);
+            connection_.connect_to_server(server_address_, server_port_);
 
             // initializes user interface last
             UI_.start();
