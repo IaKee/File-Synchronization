@@ -12,12 +12,10 @@
 #include <condition_variable>
 #include <thread>
 
-
 // argument parsing
 #include "../include/common/cxxopts.hpp"
 
 // local
-#include "client_commands.hpp"
 #include "../include/common/lang.hpp"
 #include "../include/common/user_interface.hpp"
 #include "../include/common/connection.hpp"
@@ -43,15 +41,10 @@ class Client
         // input
         user_interface::UserInterface UI_; 
 
-        // synchronization
-        std::mutex mutex_;
-        std::condition_variable buffer_status_;
-        std::condition_variable collector_status_;
-        std::string command_buffer_;
-        std::list<std::string> sanitized_commands_;
 
         // program flow
-        bool running_ = true;
+        bool running_;
+        std::atomic<bool> stop_requested_;
 
         bool validate_arguments_()
         {
@@ -80,14 +73,15 @@ class Client
             :   username_(u), 
                 server_address_(add), 
                 server_port_(p), 
-                UI_(mutex_, buffer_status_, collector_status_, command_buffer_, sanitized_commands_),
+                UI_(mutex_, cv_, command_buffer_, sanitized_commands_),
                 connection_(),
-                running_(true)
+                running_(true),
+                stop_requested_(false)
         {
             // initialization sequence
             std::string machine_name = get_machine_name();
-            std::cout << CLIENT_PROGRAM_NAME << " " << CLIENT_PROGRAM_VERSION <<
-                " started at " << machine_name << std::endl;
+            std::cout << "[STARTUP] " << CLIENT_PROGRAM_NAME << " " << CLIENT_PROGRAM_VERSION <<
+                " initialized at " << machine_name << std::endl;
 
             bool arg_ok = validate_arguments_();  // user, server address and port
             
@@ -112,19 +106,27 @@ class Client
 
             // initializes user interface last
             UI_.start();
+
         };
 
         // on destroy
         ~Client()
         {
+
             // TODO: kill child threads here
             // TODO: close connection here
-            //quit();
+            close();
         }
 
         // attributes
         std::string command_buffer;
-        std::list<std::thread> thread_list;
+        //std::list<std::thread> thread_list;
+
+        // synchronization
+        std::mutex mutex_;
+        std::condition_variable cv_;
+        std::string command_buffer_;
+        std::list<std::string> sanitized_commands_;
 
         void set_sync_dir(std::string new_directory) 
         {
@@ -136,7 +138,6 @@ class Client
                 running_ = false;
                 throw std::runtime_error(ERROR_PATH_INVALID);
             }
-
         }
 
         void process_input()
@@ -151,7 +152,7 @@ class Client
                 case 1:
                     if(sanitized_commands_.front() == "exit")
                     {
-                        quit();
+                        stop();
                     }
                     else
                         std::cout << PROMPT_PREFIX_CLIENT << ERROR_COMMAND_INVALID << std::endl;
@@ -169,49 +170,94 @@ class Client
 
         void main_loop()
         {
-            while(running_)
-            {   
-                // inserts promt prefix before que actual user command
-                std::cout << PROMPT_PREFIX;
-                std::cout.flush();
+            try
+            {
+                while(running_)
+                {  
+                    {
+                        // inserts promt prefix before que actual user command
+                        std::lock_guard<std::mutex> lock(mutex_);
+                        std::cout << PROMPT_PREFIX;
+                        std::cout.flush();
+                    }   
 
-                // waits for the buffer to actually have something
-                std::unique_lock<std::mutex> lock(mutex_);
+                    {
+                        std::unique_lock<std::mutex> lock(mutex_);
+                        cv_.wait(lock, [this]{return command_buffer_.size() > 0 || stop_requested_.load();});
+                    }
 
-                std::cout << "consumer: about to wait" << std::endl;
-                collector_status_.wait(lock, [this]() 
-                { 
-                    return command_buffer_.size() > 0 || !running_; 
-                });
+                    // checks again if the client should be running
+                    if(stop_requested_.load())
+                    {
+                        cv_.notify_one();
+                        break;
+                    }
 
+                    process_input();
 
-                process_input();
+                    // resets shared buffers
+                    command_buffer_ = "";
+                    sanitized_commands_.clear();
 
-                // resets shared buffers
-                command_buffer_ = "";
-                sanitized_commands_.clear();
-                std::cout << "hello from consumer!" << std::endl;
-
-                // notifies UI_ that the buffer is free to be used again
-                buffer_status_.notify_one();
+                    // notifies UI_ that the buffer is free to be used again
+                    cv_.notify_one();
+                }
             }
-
+            catch (const std::exception& e)
+            {
+                std::cerr << "[ERROR][CLIENT] Error occured on main_loop(): " << e.what() << std::endl;
+            }
+            catch (...) 
+            {
+                std::cerr << "[ERROR][CLIENT] Unknown error occured on main_loop()!" << std::endl;
+            }
         }
 
-        void quit()
+        void start()
         {
-            // closing sequence
-            std::cout << PROMPT_PREFIX_CLIENT << EXIT_MESSAGE << std::endl;
+            try
+            {
+                main_loop();
+            }
+            catch(const std::exception& e)
+            {
+                std::cerr << "[ERROR][CLIENT] Error occured on start(): " << e.what() << std::endl;
+            }
+            catch(...)
+            {
+                std::cerr << "[ERROR][CLIENT] Unknown error occured on start()!" << std::endl;
+            }
             
-            running_ = false;
-            buffer_status_.notify_all();
-            UI_.stop();
+        }
 
-            command_buffer_ = "";
-            sanitized_commands_.clear();
-            buffer_status_.notify_all();
+        void stop()
+        {
+            try
+            {
+                std::cout << PROMPT_PREFIX_CLIENT << EXIT_MESSAGE << std::endl;
 
-            //exit(0);
+                stop_requested_.store(true);
+                running_ = false;
+                
+                UI_.stop();
+                
+                cv_.notify_all();
+    
+            }
+            catch(const std::exception& e)
+            {
+                std::cerr << "[ERROR][CLIENT] Error occured on stop(): " << e.what() << std::endl;
+            }
+            catch(...)
+            {
+                std::cerr << "[ERROR][CLIENT] Unknown error occured on stop()!" << std::endl;
+            }
+        }
+
+        void close()
+        {
+            UI_.input_thread_.join();
+            //closing_th.join();
         }
 };
 
@@ -278,8 +324,16 @@ int main(int argc, char* argv[])
         return -1;
     }
     
-    Client app(username, server_ip, port);
-    app.main_loop();
+    try
+    {
+        Client app(username, server_ip, port);
+        app.start();
+    }
+    catch(const std::exception& e)
+    {
+        std::cerr << "Exceção capturada em main(): " << e.what() << std::endl;
+    }
+    
 
     return 0;
 }

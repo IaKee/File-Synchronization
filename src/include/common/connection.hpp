@@ -31,8 +31,8 @@ namespace connection
             string get_host_by_name(const string& host_name);
 
             void set_port(int port);
-            bool createServer();
-            void closeServer();
+            bool create_server();
+            void close_server();
             void handle_connection();
             int accept_connection();
 

@@ -6,6 +6,7 @@
 #include <vector>
 #include <list>
 #include <functional>
+#include <exception>
 #include <sstream>
 #include <termios.h>
 
@@ -22,104 +23,142 @@
 using namespace user_interface;
 
 UserInterface::UserInterface(
-    std::mutex& mtx,
-    std::condition_variable& bs,
-    std::condition_variable& cs,
+    std::mutex& mutex,
+    std::condition_variable& cv,
     std::string& buff,
     std::list<std::string>& sbuff)
     :   max_fd_(0),
         input_descriptor_(STDIN_FILENO),
         running_(false),
-        mutex_(mtx),
-        buffer_status_(bs),
-        collector_status_(cs),
+        stop_requested_(false),
+        mutex_(mutex),
+        cv_(cv),
         command_buffer_(buff),
         sanitized_commands_(sbuff)
     {
         // initialization sequence
+        disable_echo();
     };
+
+UserInterface::~UserInterface()
+{
+    // re enables echo before closing
+    enable_echo();
+}
 
 void UserInterface::start()
 {  // initializes user interface and input loop at another thread
-    if(running_)
+    try
     {
-        // incorrect usage of the start method
-        throw std::runtime_error(ERROR_COMMAND_INVALID + "start()");
-    }
+        if(running_)
+        {
+            // incorrect usage of the start method
+            throw std::runtime_error(ERROR_COMMAND_USAGE + "start()");
+        }
 
-    running_ = true;
-    command_buffer_ = "";  // resets buffer
-    buffer_status_.notify_all();
-    input_thread_ = std::thread(&UserInterface::input_loop, this);
+        // sets thread control variable to running
+        running_ = true;
+        enable_echo();
+
+        // resets shared buffers
+        command_buffer_ = "";  // resets buffer
+        sanitized_commands_.clear();
+        
+        // starts user input thread for command collection
+        input_thread_ = std::thread(&UserInterface::input_loop, this);
+    }
+    catch(const std::exception& e)
+    {
+        std::cerr << "Error initializing UI: " << e.what() << std::endl;
+    }
+    catch(...)
+    {
+        std::cerr << "Unknown error initializing UI!"  << std::endl;
+    }
+    
 }
 
 void UserInterface::stop()
 {
-    if(!running_)
+    if(!running_ || stop_requested_)
     {  // incorrect usage of the stop method
-        
-        throw std::runtime_error(ERROR_COMMAND_INVALID + "stop()");
+        throw std::runtime_error(ERROR_COMMAND_USAGE + "stop()");
     }
 
-
+    disable_echo();
     running_ = false;
-    buffer_status_.notify_all();  // notifies other thread to quit waiting
-    //collector_status_.notify_all();
-    input_thread_.join();
-
-    std::cout << "ui closed" << std::endl;
+    stop_requested_.store(true);
 }
 
 void UserInterface::input_loop()
 {  // main interface loop
-    while (running_)
-    {   
-        std::unique_lock<std::mutex> lock(mutex_);
-        
-        std::cout << "producer: about to wait" << std::endl;
-        buffer_status_.wait(
-            lock, [this]() 
+    try
+    {
+        while(running_)
+        {
             {
-                return command_buffer_.size() == 0 || !running_;
-            });
+                std::unique_lock<std::mutex> lock(mutex_);
+                cv_.wait(lock, [this]() {return command_buffer_.size() == 0 || stop_requested_.load();});
+            }
+            //std::cout << "passou aqui 3" << command_buffer_ << std::endl;
 
-        // checks if thread should still be running
-        if(!running_)
-        {
-            break;  // exits interface loop
-        }
+            // checks if thread should still be running
+            if(stop_requested_.load())
+            {
+                //lock.unlock();
+                cv_.notify_one();
+                break;
+            }
 
-        // retrieves cout file descriptor
-        FD_ZERO(&read_fds_);
-        FD_SET(input_descriptor_, &read_fds_);
-        max_fd_ = input_descriptor_ + 1;  // commonly file descriptors only from 0 to N-1, so the max_fd is N
+            // retrieves cout file descriptor
+            FD_ZERO(&read_fds_);
+            FD_SET(input_descriptor_, &read_fds_);
+            max_fd_ = input_descriptor_ + 1;  // commonly file descriptors only from 0 to N-1, so the max_fd is N
 
-        // waits to read by using select
-        if (select(max_fd_, &read_fds_, nullptr, nullptr, nullptr) == -1)
-        {
-            std::cerr << PROMPT_PREFIX << ERROR_READING_CRITICAL << std::endl;
-            return;
-        }
+            // waits to read by using select
+            if (select(max_fd_, &read_fds_, nullptr, nullptr, nullptr) == -1)
+            {
+                std::cerr << PROMPT_PREFIX << ERROR_READING_CRITICAL << std::endl;
+                break;
+            }
 
-        // checks for reading events on stdin
-        if (FD_ISSET(input_descriptor_, &read_fds_))
-        {   
-            std::cout << "hello from producer!" << std::endl;
+            // checks for reading events on stdin
+            if (FD_ISSET(input_descriptor_, &read_fds_))
+            {   
+                if(!ignoring_)
+                {    
+                    // sanitizes command line, for further processing
+                    add_command();
+                }
+                else
+                {
+                    // ignores current user input - no way to actually block it
+                    remove_commands();
+                }
 
-            // sanitizes command line, for further processing
-            sanitize_user_input();
+                // notifies collector that the buffer is ready for processing
+            }
 
-            // notifies collector that the buffer is ready for processing
-            collector_status_.notify_one();
-
-            lock.unlock();  // allows other threads to acess buffers
+            //lock.unlock();
+            cv_.notify_one();
         }
     }
+    catch(const std::exception& e)
+    {
+        std::cerr << "[ERROR][USER_INTERFACE] Error occured on main_loop(): " << e.what() << std::endl;
+    }
+    catch(...)
+    {
+        std::cerr << "[ERROR][USER_INTERFACE] Unknown error occured on main_loop()!" << std::endl;
+    }
+    
+
 }
 
-void UserInterface::sanitize_user_input()
-{
-    // treated as a critical section
+void UserInterface::add_command()
+{ 
+    // already treated as a critical section
+
     std::string line;
     std::getline(std::cin, line);
     std::istringstream iss(line);
@@ -131,6 +170,14 @@ void UserInterface::sanitize_user_input()
 
     // updates buffer
     command_buffer_ = line;
+
+    std::cout.flush();
+}
+
+void UserInterface::remove_commands()
+{
+    sanitized_commands_.clear();
+    command_buffer_ = "";
 }
 
 void UserInterface::disable_echo()
@@ -139,6 +186,7 @@ void UserInterface::disable_echo()
     tcgetattr(STDIN_FILENO, &t);
     t.c_lflag &= ~ECHO;
     tcsetattr(STDIN_FILENO, TCSANOW, &t);
+    ignoring_ = true;
 }
 
 void UserInterface::enable_echo()
@@ -147,4 +195,5 @@ void UserInterface::enable_echo()
     tcgetattr(STDIN_FILENO, &t);
     t.c_lflag |= ECHO;
     tcsetattr(STDIN_FILENO, TCSANOW, &t);
+    ignoring_ = false;
 }

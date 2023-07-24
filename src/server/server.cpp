@@ -24,9 +24,10 @@ class Server
 				conn_()
 		{
 			// init sequence
-			std::cout << conn_.create_socket() << std::endl;
+			conn_.create_socket();
 			conn_.set_port(65534);
-			conn_.createServer();
+			conn_.create_server();
+			std::cout << "aguardando conexoes" << std::endl;
 
 		};
 
@@ -38,7 +39,8 @@ class Server
 
 		void main_loop()
 		{
-			while(running_)
+			
+			while(true)
 			{
 				int client_socket = conn_.accept_connection();
 
@@ -50,10 +52,12 @@ class Server
 					std::cout << "\tMensagem recebida do cliente: " << buffer << std::endl;
 				}
 				
-				conn_.handle_connection();
-				
-				std::this_thread::sleep_for(std::chrono::seconds(1));
+				//conn_.handle_connection();
+				sleep(1);
 			}
+
+				
+			
 		}
 };
 

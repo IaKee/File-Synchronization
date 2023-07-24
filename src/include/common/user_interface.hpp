@@ -23,35 +23,38 @@ namespace user_interface
     {
         public:
             UserInterface(
-                std::mutex& mtx,
-                std::condition_variable& bs,
-                std::condition_variable& cs,
+                std::mutex& mutex,
+                std::condition_variable& cv,
                 std::string& buff,
                 std::list<std::string>& sbuff);
+            ~UserInterface();
             
             void start();
             void stop();
+            void add_command();
+            void remove_commands();
 
             // synchronization
             std::mutex& mutex_;
-            std::condition_variable& buffer_status_;
-            std::condition_variable& collector_status_;
+            std::condition_variable& cv_;
             std::string& command_buffer_;
             std::list<std::string>& sanitized_commands_;
+            std::thread input_thread_;
 
         private:
-            void sanitize_user_input();
             void input_loop();
             void enable_echo();
             void disable_echo();
 
             // program flow
             bool running_;
-            std::thread input_thread_;
+            std::atomic<bool> stop_requested_;
+            bool ignoring_;
             
             // terminal interface descriptors
             int max_fd_;
             fd_set read_fds_;
             int input_descriptor_;
+
     };
 }

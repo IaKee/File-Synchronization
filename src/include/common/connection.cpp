@@ -27,7 +27,8 @@ Connection::Connection()
     };
 
 
-bool Connection::createServer() {
+bool Connection::create_server() 
+{
         backlog_ = 5;
 
         struct sockaddr_in serverAddress;
@@ -38,7 +39,8 @@ bool Connection::createServer() {
 
         std::cout << "Endereco do server: " << inet_ntoa(serverAddress.sin_addr) << std::endl;
 
-        if(bind(sockfd_, (struct sockaddr *)&serverAddress, sizeof(serverAddress)) == -1){
+        if(bind(sockfd_, (struct sockaddr *)&serverAddress, sizeof(serverAddress)) == -1)
+        {
             
             std::cerr << "binding error" << std::endl;
             close(sockfd_);
@@ -49,10 +51,13 @@ bool Connection::createServer() {
         int addr = getsockname(sockfd_, (struct sockaddr*)&serverAddress, &addressLen);
         std::cout << "Endereco do server: " << addr << std::endl;
 
-        if(listen(sockfd_, backlog_) == -1) {
-            std::cerr << "listening error" << port_ << std::endl;
+        if(listen(sockfd_, backlog_) == -1) 
+        {
+            std::cerr << "Error listening on port" << port_ << std::endl;
             close(sockfd_);
+            return false;
         }
+
         std::cout << "listening on port" << port_ << std::endl;
         return true;
         
@@ -105,10 +110,11 @@ void Connection::connect_to_server(const string& ip_addr, int port)
 
 int Connection::accept_connection() //Usado pelo servidor
 {
-    struct sockaddr_in clientAddress;
-    socklen_t clientAddressLength = sizeof(clientAddress);
-    int client_socket = accept(client_socket, (struct sockaddr *)&clientAddress, &clientAddressLength);
-    if (client_socket == -1) {
+    struct sockaddr_in client_address;
+    socklen_t client_address_length = sizeof(client_address);
+    int client_socket = accept(client_socket, (struct sockaddr *)&client_address, &client_address_length);
+    if (client_socket == -1) 
+    {
         std::cerr << "Error accepting connection." << std::endl;
         return -1;
     }
@@ -136,11 +142,13 @@ void Connection::close_socket() //Usado pelo cliente
     }
 }
 
- void Connection::closeServer() {
-        if (sockfd_ != -1) {
-            close(sockfd_);
-            sockfd_ = -1;
-        }
+void Connection::close_server() 
+{
+    if (sockfd_ != -1) 
+    {
+        close(sockfd_);
+        sockfd_ = -1;
+    }
 }
 
 string Connection::get_host_by_name(const string& host_name) 
