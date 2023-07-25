@@ -21,7 +21,6 @@
 #include "../include/common/connection.hpp"
 #include "../include/common/utils.hpp"
 
-
 // namespace
 using cxxopts::Options;
 using cxxopts::ParseResult;
@@ -29,10 +28,13 @@ using cxxopts::ParseResult;
 class Client
 {
     private:
+        // runtime control
+        bool running_;
+        std::atomic<bool> stop_requested_;
+
         // connection
         std::string username_;
         std::string server_address_;
-        int server_port_;
         connection::Connection connection_;
 
         // file management
@@ -40,11 +42,6 @@ class Client
 
         // input
         user_interface::UserInterface UI_; 
-
-
-        // program flow
-        bool running_;
-        std::atomic<bool> stop_requested_;
 
         bool validate_arguments_()
         {
@@ -102,7 +99,7 @@ class Client
             server_address_ = connection_.get_host_by_name(add);
 
             // connects to server
-            connection_.connect_to_server(server_address_, server_port_);
+        connection_.connect_to_server(server_address_, server_port_);
 
             // initializes user interface last
             UI_.start();
@@ -222,16 +219,19 @@ class Client
             catch(const std::exception& e)
             {
                 std::cerr << "[ERROR][CLIENT] Error occured on start(): " << e.what() << std::endl;
+                raise std::runtime_error(e);
             }
             catch(...)
             {
                 std::cerr << "[ERROR][CLIENT] Unknown error occured on start()!" << std::endl;
+                throw std::runtime_error("Unknown error occured on start()!");
             }
             
         }
 
         void stop()
         {
+            // stop user interface and command processing
             try
             {
                 std::cout << PROMPT_PREFIX_CLIENT << EXIT_MESSAGE << std::endl;
@@ -247,17 +247,19 @@ class Client
             catch(const std::exception& e)
             {
                 std::cerr << "[ERROR][CLIENT] Error occured on stop(): " << e.what() << std::endl;
+                throw std::runtime_error(e);
             }
             catch(...)
             {
                 std::cerr << "[ERROR][CLIENT] Unknown error occured on stop()!" << std::endl;
+                throw std::runtime_error("Unknown error occured on stop()!");
             }
         }
 
         void close()
         {
+            // closes remaining threads
             UI_.input_thread_.join();
-            //closing_th.join();
         }
 };
 
@@ -331,7 +333,7 @@ int main(int argc, char* argv[])
     }
     catch(const std::exception& e)
     {
-        std::cerr << "Exceção capturada em main(): " << e.what() << std::endl;
+        std::cerr << "Exception captured on main(): " << e.what() << std::endl;
     }
     
 

@@ -15,10 +15,6 @@
 #include <netdb.h>
 #include <netinet/in.h>
 
-// namespace
-using std::string;
-
-
 namespace connection
 {
     class Connection 
@@ -26,21 +22,23 @@ namespace connection
         public:
             Connection();
             bool create_socket();
-            void connect_to_server(const string& ipAddress, int port);
-            void close_socket();
-            string get_host_by_name(const string& host_name);
-
-            void set_port(int port);
             bool create_server();
-            void close_server();
+            void connect_to_server(const std::string& ipAddress, int port);
             void handle_connection();
+            std::string get_host_by_name(const std::string& host_name);
             int accept_connection();
+            void close_socket();
+            void set_port(int port);
+            std::string get_address();
+            int get_port();
+
 
         private:
             int sockfd_;
             int port_;
             int backlog_;
             int server_fd_;
+            std::string address_;
             
     };
 }

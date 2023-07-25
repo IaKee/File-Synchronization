@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include <iostream>
 
+
 // connection
 #include <arpa/inet.h>
 #include <sys/types.h>
@@ -14,11 +15,13 @@
 
 // locals
 #include "connection.hpp"
+#include "json.hpp"
 #include "lang.hpp"
 #include "timer.hpp"
 
 // namespace
 using namespace connection;
+namespace js = json::json;
 
 Connection::Connection() 
     :   sockfd_(-1) 
@@ -74,7 +77,7 @@ bool Connection::create_socket()
     return sockfd_ != -1;
 }
 
-void Connection::connect_to_server(const string& ip_addr, int port) 
+void Connection::connect_to_server(const std::string& ip_addr, int port) 
 {   
     std::cout << PROMPT_PREFIX_CLIENT << CONNECTING_TO_SERVER;
     std::cout.flush();
@@ -104,6 +107,7 @@ void Connection::connect_to_server(const string& ip_addr, int port)
         throw std::runtime_error(ERROR_CONNECTING_SERVER);
     }
 
+    
     handle_connection();
     // Now you have a connected socket (sockfd_) that you can use for communication.
 }
@@ -121,7 +125,6 @@ int Connection::accept_connection() //Usado pelo servidor
 
     return client_socket;
 }
-
 
 void Connection::handle_connection()
 {
@@ -142,16 +145,7 @@ void Connection::close_socket() //Usado pelo cliente
     }
 }
 
-void Connection::close_server() 
-{
-    if (sockfd_ != -1) 
-    {
-        close(sockfd_);
-        sockfd_ = -1;
-    }
-}
-
-string Connection::get_host_by_name(const string& host_name) 
+std::string Connection::get_host_by_name(const std::string& host_name) 
 {   
     std::cout << PROMPT_PREFIX_CLIENT << RESOLVING_HOST;
     std::cout.flush();
@@ -178,4 +172,102 @@ string Connection::get_host_by_name(const string& host_name)
 void Connection::set_port(int port)
 {
     port_ = port;
+}
+
+std::string Connection::get_address()
+{
+    return address_;
+}
+
+int Connection::get_port()
+{
+    return port_;
+}
+
+//Faz o upload do arquivo para o servidor
+void Connection::uploadFile(const std::string& fileToUpload, const std::string& filename, const std::string& username) 
+{
+
+    // Open the file to be uploaded
+    std::ifstream fileStream(fileToUpload, std::ios::binary);
+    if (!fileStream) {
+        std::cerr << "Error opening file: " << fileToUpload << std::endl;
+        return;
+    }
+
+    // Read the entire file content into a string
+    std::stringstream fileContentStream;
+    fileContentStream << fileStream.rdbuf();
+    std::string fileContent = fileContentStream.str();
+
+    // Create a JSON object with the required keys
+    js jsonObject;
+    jsonObject["function_type"] = "uploadFile";
+    jsonObject["username"] = username;
+    jsonObject["filename"] = filename;
+    jsonObject["file_binary"] = fileContent
+
+    // Convert the JSON object to a string
+    std::string jsonData = jsonObject.dump();
+
+    // Send the combined data to the server
+    send(sockfd_, jsonData.c_str(), jsonData.size(), 0);
+    fileStream.close();
+}
+
+//Baixa um arquivo do servidor
+void Connection::downloadFile(const std::string& filename, const std::string& username) 
+{
+    // Create a JSON object with the required keys
+    js jsonObject;
+    jsonObject["function_type"] = "downloadFile";
+    jsonObject["username"] = username;
+    jsonObject["filename"] = filename;
+
+    // Convert the JSON object to a string
+    std::string jsonData = jsonObject.dump();
+    // Send the combined data to the server
+    send(sockfd_, jsonData.c_str(), jsonData.size(), 0);    
+
+    std::ofstream file(filename, std::ios::binary);
+    if (!file.is_open()) {
+        std::cerr << "Erro ao criar o arquivo local." << std::endl;
+        return;
+    }
+
+    int file_size;
+    recv(sockfd_, &file_size, sizeof(file_size), 0);
+
+    char buffer[1024];
+    int bytes_received = 0;
+    while (bytes_received < file_size) {
+        int bytes = recv(sockfd_, buffer, sizeof(buffer), 0);
+        if (bytes <= 0) {
+            break;
+        }
+        file.write(buffer, bytes);
+        bytes_received += bytes;
+    }
+
+    file.close();
+
+    if (bytes_received == file_size) {
+        std::cout << "Download concluído: " << filename << std::endl;
+    } else {
+        std::cerr << "Erro ao receber o arquivo." << std::endl;
+    }
+}
+
+void Connection::deleteFile(const std::string& filename, const std::string& username) 
+{
+        // Create a JSON object with the required keys
+        js jsonObject;
+        jsonObject["function_type"] = "deleteFile";
+        jsonObject["username"] = username;
+        jsonObject["filename"] = filename;
+
+        // Convert the JSON object to a string
+        std::string jsonData = jsonObject.dump();
+        // Send the combined data to the server
+        send(sockfd_, jsonData.c_str(), jsonData.size(), 0);
 }

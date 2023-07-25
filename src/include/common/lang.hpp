@@ -3,7 +3,6 @@
 #include <iostream>
 #include <string>
 
-// client specific
 const std::string CLIENT_PROGRAM_NAME = "SyncWizard client";
 const std::string CLIENT_PROGRAM_VERSION = "1.0";
 const std::string CLIENT_PROGRAM_DESCRIPTION = "SyncWizard client is a file synchronization program. \
@@ -16,6 +15,8 @@ const std::string CLIENT_EXAMPLE_USAGE = "Example usage: ./SWizClient --username
 --server_ip 192.168.0.100 --port 8080";
 
 // parameter descriptions
+const std::string SERVER_PROGRAM_NAME = "SyncWizard server";
+const std::string SERVER_PROGRAM_VERSION = "1.0";
 const std::string SERVER_IP_DESCRIPTION = "Use this option to specify the IP address of the \
 SyncWizard server you want to use. This will allow the program to connect to the correct \
 server for file synchronization.";
@@ -45,6 +46,10 @@ const std::string ERROR_COMMAND_USAGE = "Incorrect usage of command: ";
 const std::string ERROR_RESOLVING_HOST = "Error resolving host name.";
 const std::string ERROR_CONNECTING_SERVER = "Error connecting to server.";
 const std::string ERROR_CONVERTING_IP = "Error converting IP address to string.";
+const std::string ERROR_CREATING_FOLDER = "Could not create directory! Please check system permissions!";
+const std::string ERROR_CREATING_FILE = "Could not create file! Please check system permissions!";
+const std::string ERROR_READING_FILE = "Could not read from file! Please check system permissions!";
+const std::string ERROR_CHECKING_PERMISSIONS = "Could not acess directory! Please check system permissions!";
 const std::string ERROR_SOCK_CREATING = "Error creating socket!";
 const std::string ERROR_PATH_INVALID = "Could not acess given path!";
 const std::string ERROR_READING_CRITICAL = "Critical error reading command line!";
