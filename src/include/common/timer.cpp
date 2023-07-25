@@ -18,7 +18,7 @@ Timer::~Timer()
     {
         const auto end_time = std::chrono::high_resolution_clock::now();
         const auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time_).count();
-        std::cout << " --> ttr: " << format_duration(duration) << std::endl;
+        std::cout << " --> ttr: " << format_duration(duration);
     }
 }
 

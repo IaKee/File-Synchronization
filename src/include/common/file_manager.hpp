@@ -1,3 +1,5 @@
+#pragma once
+
 #include <iostream>
 #include <fstream>
 #include <unordered_map>
@@ -7,16 +9,16 @@
 #include <filesystem>
 #include <sys/stat.h>
 
+# include "json.hpp"
+
 namespace fs = std::filesystem;
+using json = nlohmann::json;
 
 namespace file_manager
 {
     class FileManager
     {
         public:
-            FileManager();
-            ~FileManager();
-
             bool open_file(const std::string& file_path, const std::string& tag);
             bool close_file(const std::string& tag);
             bool is_file_open(const std::string& tag);
@@ -31,7 +33,7 @@ namespace file_manager
             bool create_directory(const std::string& path);
             bool check_permissions(const std::string& path);
             bool create_empty_file(const std::string& path);
-            js::json get_json_contents(const std::string& path);
+            json get_json_contents(const std::string& path);
 
         private:
             bool dummy_;

@@ -16,6 +16,7 @@
 
 // locals
 #include "lang.hpp"
+#include "timer.hpp"
 #include "user_interface.hpp"
 #include "utils.hpp"
 
@@ -48,6 +49,8 @@ UserInterface::~UserInterface()
 
 void UserInterface::start()
 {  // initializes user interface and input loop at another thread
+    TTR::Timer timer;
+
     try
     {
         if(running_)
@@ -100,8 +103,7 @@ void UserInterface::input_loop()
                 std::unique_lock<std::mutex> lock(mutex_);
                 cv_.wait(lock, [this]() {return command_buffer_.size() == 0 || stop_requested_.load();});
             }
-            //std::cout << "passou aqui 3" << command_buffer_ << std::endl;
-
+    
             // checks if thread should still be running
             if(stop_requested_.load())
             {

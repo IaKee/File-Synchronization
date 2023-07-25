@@ -17,12 +17,8 @@
 #include "lang.hpp"
 
 namespace fs = std::filesystem;
-namespace js = json::json;
+using json = nlohmann::json;
 using namespace file_manager;
-
-FileManager::FileManager() 
-    : dummy_(true)
-    {};
 
 bool FileManager::open_file(const std::string& file_path, const std::string& tag = "")
 {  
@@ -253,7 +249,7 @@ bool FileManager::create_empty_file(const std::string& path)
     return false;
 }
 
-js::json FileManager::get_json_contents(const std::string& path)
+json FileManager::get_json_contents(const std::string& path)
 {
     // returns contents from json file
     std::ifstream file(path);
@@ -263,7 +259,7 @@ js::json FileManager::get_json_contents(const std::string& path)
     }
 
     // reads json contents
-    js::json data;
+    json data;
     file >> data;
 
     file.close();

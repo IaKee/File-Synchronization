@@ -45,6 +45,9 @@ list of available commands for this application.";
 const std::string ERROR_COMMAND_USAGE = "Incorrect usage of command: ";
 const std::string ERROR_RESOLVING_HOST = "Error resolving host name.";
 const std::string ERROR_CONNECTING_SERVER = "Error connecting to server.";
+const std::string ERROR_CREATING_SERVER = "Error creating server!";
+const std::string ERROR_BIND = "Error binding port to socket!";
+const std::string ERROR_LISTEN = "Error setting socket to passive using listen";
 const std::string ERROR_CONVERTING_IP = "Error converting IP address to string.";
 const std::string ERROR_CREATING_FOLDER = "Could not create directory! Please check system permissions!";
 const std::string ERROR_CREATING_FILE = "Could not create file! Please check system permissions!";
@@ -54,9 +57,12 @@ const std::string ERROR_SOCK_CREATING = "Error creating socket!";
 const std::string ERROR_PATH_INVALID = "Could not acess given path!";
 const std::string ERROR_READING_CRITICAL = "Critical error reading command line!";
 
+const std::string UI_STARTING = "Starting user interface";
 const std::string SOCK_CREATING = "Creating socket...";
+const std::string DONE_SUFIX = " --> Done!";
 const std::string RESOLVING_HOST = "Resolving host...";
 const std::string CONNECTING_TO_SERVER = "Attempting connection to server...";
+const std::string BINDING_PORT = "Binding port to listen...";
 const std::string EXIT_MESSAGE = "Exiting the program...";
 
 // other

@@ -36,6 +36,7 @@ class Client
         std::string username_;
         std::string server_address_;
         connection::Connection connection_;
+        int server_port_;
 
         // file management
         std::string sync_dir_;
@@ -47,11 +48,11 @@ class Client
         {
             std::string error_description = "";
             
-            if(!is_valid_username(this->username_))
+            if(!is_valid_username(username_))
                 error_description = ERROR_PARSING_USERNAME;
-            if(!is_valid_IP(this->server_address_))
+            if(!is_valid_IP(server_address_))
                 error_description = ERROR_PARSING_IP;
-            if(!is_valid_port(this->server_port_))
+            if(!is_valid_port(server_port_))
                 error_description = ERROR_PARSING_PORT;
 
             if(error_description != "")
@@ -66,7 +67,7 @@ class Client
 
     public:
         // on init
-        Client(const string& u, const string& add, const int& p)
+        Client(const std::string& u, const std::string& add, const int& p)
             :   username_(u), 
                 server_address_(add), 
                 server_port_(p), 
@@ -78,7 +79,7 @@ class Client
             // initialization sequence
             std::string machine_name = get_machine_name();
             std::cout << "[STARTUP] " << CLIENT_PROGRAM_NAME << " " << CLIENT_PROGRAM_VERSION <<
-                " initialized at " << machine_name << std::endl;
+                " initializing on " << machine_name << std::endl;
 
             bool arg_ok = validate_arguments_();  // user, server address and port
             
@@ -88,21 +89,30 @@ class Client
             }
 
             // creates socket
+            std::cout << PROMPT_PREFIX_CLIENT << SOCK_CREATING;
             bool sock_ok = connection_.create_socket();
             if(!sock_ok)
             {
                 running_ = false;
                 throw std::runtime_error(ERROR_SOCK_CREATING);
             }
+            std::cout << DONE_SUFIX << std::endl;
+
 
             // resolves host name
             server_address_ = connection_.get_host_by_name(add);
+            std::cout << DONE_SUFIX << std::endl;
 
             // connects to server
-        connection_.connect_to_server(server_address_, server_port_);
+            //std::cout << PROMPT_PREFIX_CLIENT << CONNECTING_TO_SERVER;
+            //std::cout.flush();
+            //connection_.connect_to_server(server_address_, server_port_);
+            //std::cout << DONE_SUFIX << std::endl;
 
             // initializes user interface last
+            std::cout << PROMPT_PREFIX_CLIENT << UI_STARTING;
             UI_.start();
+            std::cout << DONE_SUFIX << std::endl;
 
         };
 
@@ -219,7 +229,7 @@ class Client
             catch(const std::exception& e)
             {
                 std::cerr << "[ERROR][CLIENT] Error occured on start(): " << e.what() << std::endl;
-                raise std::runtime_error(e);
+                throw std::runtime_error(e.what());
             }
             catch(...)
             {
@@ -247,7 +257,7 @@ class Client
             catch(const std::exception& e)
             {
                 std::cerr << "[ERROR][CLIENT] Error occured on stop(): " << e.what() << std::endl;
-                throw std::runtime_error(e);
+                throw std::runtime_error(e.what());
             }
             catch(...)
             {
@@ -333,7 +343,7 @@ int main(int argc, char* argv[])
     }
     catch(const std::exception& e)
     {
-        std::cerr << "Exception captured on main(): " << e.what() << std::endl;
+        std::cerr << "\nException captured on main(): " << e.what() << std::endl;
     }
     
 

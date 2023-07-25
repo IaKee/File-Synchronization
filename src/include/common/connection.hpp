@@ -7,6 +7,8 @@
 #include <cstring>
 #include <string>
 #include <stdexcept>
+#include <atomic>
+#include <thread>
 
 // other
 #include <arpa/inet.h>
@@ -20,25 +22,38 @@ namespace connection
     class Connection 
     {
         public:
+            // init & destroy
             Connection();
-            bool create_socket();
-            bool create_server();
-            void connect_to_server(const std::string& ipAddress, int port);
-            void handle_connection();
-            std::string get_host_by_name(const std::string& host_name);
-            int accept_connection();
-            void close_socket();
-            void set_port(int port);
-            std::string get_address();
-            int get_port();
 
+            // synchronization
+            std::atomic<bool> running_accept_;
+
+            // methods
+            bool create_socket();
+            void create_server();
+            void connect_to_server(const std::string& ipAddress, int port);
+            //void handle_connection();
+            std::string get_host_by_name(const std::string& host_name);
+            void close_socket();
+
+            // main methods
+            void download_file(const std::string& filename, const std::string& username);
+            void upload_file(const std::string& filename, const std::string& username);
+            void start_accepting_connections();
+            void stop_accepting_connections();
+
+            // other methods
+            void set_port(int port);
+            int get_port();
+            std::string get_address();
+            void link_pipe(int (&pipe)[2]);
 
         private:
             int sockfd_;
             int port_;
             int backlog_;
-            int server_fd_;
-            std::string address_;
-            
+            std::string host_address_;
+        
+            int (*signal_pipe_)[2];
     };
 }

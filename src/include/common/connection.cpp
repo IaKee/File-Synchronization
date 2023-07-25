@@ -21,66 +21,62 @@
 
 // namespace
 using namespace connection;
-namespace js = json::json;
+using json = nlohmann::json;
 
 Connection::Connection() 
-    :   sockfd_(-1) 
-    {
-        // nothing here
-    };
-
-
-bool Connection::create_server() 
+    :   sockfd_(-1),
+        backlog_(5),
+        signal_pipe_(nullptr)
 {
-        backlog_ = 5;
-
-        struct sockaddr_in serverAddress;
-        memset(&serverAddress, 0, sizeof(serverAddress));
-        serverAddress.sin_family = AF_INET;
-        serverAddress.sin_addr.s_addr = htonl(INADDR_ANY);
-        serverAddress.sin_port = htons(port_);
-
-        std::cout << "Endereco do server: " << inet_ntoa(serverAddress.sin_addr) << std::endl;
-
-        if(bind(sockfd_, (struct sockaddr *)&serverAddress, sizeof(serverAddress)) == -1)
-        {
-            
-            std::cerr << "binding error" << std::endl;
-            close(sockfd_);
-            return false;
-        }
-
-        socklen_t addressLen = sizeof(serverAddress);
-        int addr = getsockname(sockfd_, (struct sockaddr*)&serverAddress, &addressLen);
-        std::cout << "Endereco do server: " << addr << std::endl;
-
-        if(listen(sockfd_, backlog_) == -1) 
-        {
-            std::cerr << "Error listening on port" << port_ << std::endl;
-            close(sockfd_);
-            return false;
-        }
-
-        std::cout << "listening on port" << port_ << std::endl;
-        return true;
-        
-}
+    // nothing here yet
+};
 
 bool Connection::create_socket() 
 {
     // creates a new socket for communication
-    // by using SOCK_STREAM, TCP is specified
-    std::cout << PROMPT_PREFIX_CLIENT << SOCK_CREATING;
     TTR::Timer timer;
 
+    // by using SOCK_STREAM, TCP is specified
     sockfd_ = socket(AF_INET, SOCK_STREAM, 0);
-    return sockfd_ != -1;
+    bool sock_flag = sockfd_ != -1;
+
+    if(!sock_flag)
+        timer.cancel();
+
+    return sock_flag;
+}
+
+void Connection::create_server() 
+{
+    // sets socket to passive and listens on given port
+    TTR::Timer timer;
+
+    struct sockaddr_in server_address;
+    memset(&server_address, 0, sizeof(server_address));
+    server_address.sin_family = AF_INET;
+    server_address.sin_addr.s_addr = htonl(INADDR_ANY);
+    server_address.sin_port = htons(port_);
+
+    host_address_ = inet_ntoa(server_address.sin_addr);
+
+    if(bind(sockfd_, (struct sockaddr *)&server_address, sizeof(server_address)) == -1)
+    {
+        timer.cancel();
+        throw std::runtime_error(ERROR_BIND);
+    }
+
+    socklen_t address_len = sizeof(server_address);
+    int addr = getsockname(sockfd_, (struct sockaddr*)&server_address, &address_len);
+
+    // sets socket to passive mode to listen for client connections
+    if (listen(sockfd_, backlog_) == -1) 
+    {
+        throw std::runtime_error(ERROR_LISTEN);
+    }
 }
 
 void Connection::connect_to_server(const std::string& ip_addr, int port) 
 {   
-    std::cout << PROMPT_PREFIX_CLIENT << CONNECTING_TO_SERVER;
-    std::cout.flush();
     TTR::Timer timer;
 
     int sockfd_ = socket(AF_INET, SOCK_STREAM, 0);
@@ -108,35 +104,71 @@ void Connection::connect_to_server(const std::string& ip_addr, int port)
     }
 
     
-    handle_connection();
+    //handle_connection();
     // Now you have a connected socket (sockfd_) that you can use for communication.
 }
 
-int Connection::accept_connection() //Usado pelo servidor
+void Connection::start_accepting_connections() 
 {
-    struct sockaddr_in client_address;
-    socklen_t client_address_length = sizeof(client_address);
-    int client_socket = accept(client_socket, (struct sockaddr *)&client_address, &client_address_length);
-    if (client_socket == -1) 
+    try
     {
-        std::cerr << "Error accepting connection." << std::endl;
-        return -1;
+        
+        fd_set read_fds;
+        FD_ZERO(&read_fds);
+        FD_SET(sockfd_, &read_fds);
+        FD_SET((*signal_pipe_[0]), &read_fds);
+
+        int max_fd = std::max(sockfd_, (*signal_pipe_)[0]);
+
+        while (running_accept_.load()) 
+        {
+            fd_set temp_fds = read_fds;
+
+            // waits for updates on the socket or the signal pipe
+            int result = select(max_fd + 1, &temp_fds, nullptr, nullptr, nullptr);
+            
+            if (result > 0) 
+            {
+                if (FD_ISSET(sockfd_, &temp_fds)) 
+                {
+                    // waits for the new connection
+                    int new_socket = accept(sockfd_, nullptr, nullptr);
+                    if (new_socket >= 0) 
+                    {
+                        // new connection stablished
+                        // TODO:: treat here
+                        close(new_socket);  // remove this
+                    }
+                }
+
+                // checks for pipe signal to stop accepting connections
+                if (FD_ISSET((*signal_pipe_)[0], &temp_fds)) 
+                {
+                    break;
+                }
+            }
+        }
+
+        // closes the reading end of the signal pipe
+        close((*signal_pipe_[0])); 
     }
-
-    return client_socket;
+    catch(const std::exception& e)
+    {
+        std::cerr << "[ERROR][CONNECTION] Error occured on start_accepting_connections(): " << e.what() << std::endl;
+    }
+    catch(...)
+    {
+        std::cerr << "[ERROR][CONNECTION] Unknown error occured on start_accepting_connections()!" << std::endl;
+    }
 }
 
-void Connection::handle_connection()
+void Connection::stop_accepting_connections()
 {
-    const char *message = "message";
-    send(sockfd_, message, strlen(message),0);
-    
-    //...
-
-    //close(sockfd_);
+    // breaks accepting loop
+    running_accept_.store(false);
 }
 
-void Connection::close_socket() //Usado pelo cliente
+void Connection::close_socket()
 {
     if (sockfd_ != -1) 
     {
@@ -169,26 +201,11 @@ std::string Connection::get_host_by_name(const std::string& host_name)
     return ip;
 }
 
-void Connection::set_port(int port)
+void Connection::upload_file(const std::string& filename, const std::string& username) 
 {
-    port_ = port;
-}
+    // uploads a given file
 
-std::string Connection::get_address()
-{
-    return address_;
-}
-
-int Connection::get_port()
-{
-    return port_;
-}
-
-//Faz o upload do arquivo para o servidor
-void Connection::uploadFile(const std::string& fileToUpload, const std::string& filename, const std::string& username) 
-{
-
-    // Open the file to be uploaded
+    /*
     std::ifstream fileStream(fileToUpload, std::ios::binary);
     if (!fileStream) {
         std::cerr << "Error opening file: " << fileToUpload << std::endl;
@@ -213,11 +230,14 @@ void Connection::uploadFile(const std::string& fileToUpload, const std::string& 
     // Send the combined data to the server
     send(sockfd_, jsonData.c_str(), jsonData.size(), 0);
     fileStream.close();
+    */
 }
 
-//Baixa um arquivo do servidor
-void Connection::downloadFile(const std::string& filename, const std::string& username) 
+void Connection::download_file(const std::string& filename, const std::string& username) 
 {
+    // downloads a given file
+
+    /*
     // Create a JSON object with the required keys
     js jsonObject;
     jsonObject["function_type"] = "downloadFile";
@@ -256,18 +276,26 @@ void Connection::downloadFile(const std::string& filename, const std::string& us
     } else {
         std::cerr << "Erro ao receber o arquivo." << std::endl;
     }
+    */
 }
 
-void Connection::deleteFile(const std::string& filename, const std::string& username) 
+void Connection::set_port(int port)
 {
-        // Create a JSON object with the required keys
-        js jsonObject;
-        jsonObject["function_type"] = "deleteFile";
-        jsonObject["username"] = username;
-        jsonObject["filename"] = filename;
+    port_ = port;
+}
 
-        // Convert the JSON object to a string
-        std::string jsonData = jsonObject.dump();
-        // Send the combined data to the server
-        send(sockfd_, jsonData.c_str(), jsonData.size(), 0);
+int Connection::get_port()
+{
+    return port_;
+}
+
+std::string Connection::get_address()
+{
+    return host_address_;
+}
+
+void Connection::link_pipe(int (&pipe)[2])
+{   
+    // links signal pipe with server application
+    signal_pipe_ = &pipe;
 }
