@@ -44,27 +44,6 @@ class Client
         // input
         user_interface::UserInterface UI_; 
 
-        bool validate_arguments_()
-        {
-            std::string error_description = "";
-            
-            if(!is_valid_username(username_))
-                error_description = ERROR_PARSING_USERNAME;
-            if(!is_valid_IP(server_address_))
-                error_description = ERROR_PARSING_IP;
-            if(!is_valid_port(server_port_))
-                error_description = ERROR_PARSING_PORT;
-
-            if(error_description != "")
-            {   
-                std::cout << PROMPT_PREFIX << error_description << std::endl;
-                std::cout << PROMPT_PREFIX << RUN_INFO << std::endl;
-                running_ = false;
-                return false;
-            }
-            return true;
-        }
-
     public:
         // on init
         Client(const std::string& u, const std::string& add, const int& p)
@@ -81,10 +60,20 @@ class Client
             std::cout << "[STARTUP] " << CLIENT_PROGRAM_NAME << " " << CLIENT_PROGRAM_VERSION <<
                 " initializing on " << machine_name << std::endl;
 
-            bool arg_ok = validate_arguments_();  // user, server address and port
             
-            if(!arg_ok)
-            {
+            // validates launch arguments
+            std::string error_description = "";
+            if(!is_valid_username(username_))
+                error_description = ERROR_PARSING_USERNAME;
+            if(!is_valid_IP(server_address_))
+                error_description = ERROR_PARSING_IP;
+            if(!is_valid_port(server_port_))
+                error_description = ERROR_PARSING_PORT;
+
+            if(error_description != "")
+            {   
+                std::cout << PROMPT_PREFIX << error_description << std::endl;
+                std::cout << PROMPT_PREFIX << RUN_INFO << std::endl;
                 throw std::invalid_argument(ERROR_PARSING_CRITICAL);
             }
 
@@ -169,7 +158,6 @@ class Client
                     break;
                 
                 default:
-                    //std::cout << PROMPT_PREFIX << ERROR_COMMAND_USAGE << sanitized_commands_.front() << std::endl;
                     std::cout << PROMPT_PREFIX_CLIENT << ERROR_COMMAND_INVALID << std::endl;
                     break;
             }

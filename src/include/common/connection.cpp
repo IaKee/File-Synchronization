@@ -26,7 +26,8 @@ using json = nlohmann::json;
 Connection::Connection() 
     :   sockfd_(-1),
         backlog_(5),
-        signal_pipe_(nullptr)
+        signal_pipe_(nullptr),
+        running_accept_(true)
 {
     // nothing here yet
 };
@@ -108,17 +109,18 @@ void Connection::connect_to_server(const std::string& ip_addr, int port)
     // Now you have a connected socket (sockfd_) that you can use for communication.
 }
 
+
 void Connection::start_accepting_connections() 
 {
     try
     {
-        
         fd_set read_fds;
         FD_ZERO(&read_fds);
         FD_SET(sockfd_, &read_fds);
-        FD_SET((*signal_pipe_[0]), &read_fds);
+        FD_SET(signal_pipe_[0], &read_fds);
 
-        int max_fd = std::max(sockfd_, (*signal_pipe_)[0]);
+        int max_fd = std::max(sockfd_, signal_pipe_[0]);
+        std::cout << "passou" << std::endl;
 
         while (running_accept_.load()) 
         {
@@ -142,7 +144,7 @@ void Connection::start_accepting_connections()
                 }
 
                 // checks for pipe signal to stop accepting connections
-                if (FD_ISSET((*signal_pipe_)[0], &temp_fds)) 
+                if (FD_ISSET(signal_pipe_[0], &temp_fds)) 
                 {
                     break;
                 }
@@ -150,7 +152,7 @@ void Connection::start_accepting_connections()
         }
 
         // closes the reading end of the signal pipe
-        close((*signal_pipe_[0])); 
+        close(signal_pipe_[0]); 
     }
     catch(const std::exception& e)
     {
@@ -294,8 +296,8 @@ std::string Connection::get_address()
     return host_address_;
 }
 
-void Connection::link_pipe(int (&pipe)[2])
+void Connection::link_pipe(int* pipe)
 {   
     // links signal pipe with server application
-    signal_pipe_ = &pipe;
+    signal_pipe_ = pipe;
 }

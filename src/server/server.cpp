@@ -26,7 +26,9 @@ using namespace server;
 Server::Server()
 	:	S_UI_(mutex_, cv_, command_buffer_, sanitized_commands_),
 	f_manager_(),
-	conn_()
+	conn_(),
+	running_(true),
+	stop_requested_(false)
 {
 	// init sequence
 	std::string machine_name = get_machine_name();
@@ -67,13 +69,12 @@ Server::~Server()
 void Server::start()
 {
 	// starts accept thread to recieve new connection requests
-	/*
+	conn_.link_pipe(signal_pipe_);
 	accept_th_ = std::thread(
 		[this]() 
 		{
         	conn_.start_accepting_connections();
     	});
-	*/
 
 	try
 	{	
@@ -296,7 +297,7 @@ void Server::main_loop()
 				std::unique_lock<std::mutex> lock(mutex_);
 				cv_.wait(lock, [this]{return command_buffer_.size() > 0 || stop_requested_.load();});
 			}
-			std::cout << "started loop running ui" << std::endl;
+			//std::cout << "started loop running ui" << std::endl;
 
 			// checks again if the client should be running
 			if(stop_requested_.load())
@@ -304,6 +305,7 @@ void Server::main_loop()
 				cv_.notify_one();
 				break;
 			}
+			
 
 			process_input();
 
@@ -325,4 +327,6 @@ void Server::main_loop()
 		std::cerr << "[ERROR][SERVER] Unknown error occured on main_loop()!" << std::endl;
 		throw std::runtime_error("Unknown error occured on main_loop()");
 	}
+
+	std::cout << "retornou" << std::endl;
 }

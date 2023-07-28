@@ -153,8 +153,6 @@ void UserInterface::input_loop()
     {
         std::cerr << "[ERROR][USER_INTERFACE] Unknown error occured on main_loop()!" << std::endl;
     }
-    
-
 }
 
 void UserInterface::add_command()

@@ -46,7 +46,7 @@ namespace connection
             void set_port(int port);
             int get_port();
             std::string get_address();
-            void link_pipe(int (&pipe)[2]);
+            void link_pipe(int *pipe);
 
         private:
             int sockfd_;
@@ -54,6 +54,6 @@ namespace connection
             int backlog_;
             std::string host_address_;
         
-            int (*signal_pipe_)[2];
+            int* signal_pipe_;
     };
 }
