@@ -20,6 +20,7 @@ namespace file_manager
     {
         public:
             bool open_file(const std::string& file_path, const std::string& tag);
+            bool path_exists(std::string path);
             bool close_file(const std::string& tag);
             bool is_file_open(const std::string& tag);
             bool delete_file(const std::string& tag);

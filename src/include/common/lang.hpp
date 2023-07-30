@@ -56,7 +56,8 @@ const std::string ERROR_CHECKING_PERMISSIONS = "Could not acess directory! Pleas
 const std::string ERROR_SOCK_CREATING = "Error creating socket!";
 const std::string ERROR_PATH_INVALID = "Could not acess given path!";
 const std::string ERROR_READING_CRITICAL = "Critical error reading command line!";
-
+const std::string ERROR_GETTING_USER = "Could not find user logged in!";
+const std::string ERROR_USER_LOGGED = "User already logged in!";
 const std::string UI_STARTING = "Starting user interface";
 const std::string SOCK_CREATING = "Creating socket...";
 const std::string DONE_SUFIX = " --> Done!";
@@ -65,7 +66,7 @@ const std::string CONNECTING_TO_SERVER = "Attempting connection to server...";
 const std::string BINDING_PORT = "Binding port to listen...";
 const std::string EXIT_MESSAGE = "Exiting the program...";
 
-// other
+// othe
 const std::string PROMPT_PREFIX = "\t#> ";
 const std::string PROMPT_PREFIX_CLIENT = "\t[CLIENT] ";
 const std::string PROMPT_PREFIX_SERVER = "\t[SERVER] ";

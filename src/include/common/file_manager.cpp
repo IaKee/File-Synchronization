@@ -40,6 +40,11 @@ bool FileManager::open_file(const std::string& file_path, const std::string& tag
     return false;
 }
 
+bool FileManager::path_exists(std::string path)
+{
+    return fs::exists(path);
+}
+
 bool FileManager::close_file(const std::string& tag)
 {  
     // closes a file - associated with a tag
