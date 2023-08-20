@@ -230,11 +230,6 @@ std::string FileManager::generate_tag(const std::string& file_path)
     return file_name;
 }
 
-bool FileManager::create_directory(const std::string& path) 
-{
-    return fs::create_directory(path);
-}
-
 bool FileManager::check_permissions(const std::string& path)
 {
     // returns false if given directory does not have read or write permissions

@@ -15,8 +15,6 @@
 #include <mutex>
 
 // locals
-#include "lang.hpp"
-#include "timer.hpp"
 #include "user_interface.hpp"
 #include "utils.hpp"
 
@@ -49,15 +47,15 @@ UserInterface::~UserInterface()
 
 void UserInterface::start()
 {  // initializes user interface and input loop at another thread
-    TTR::Timer timer;
-
     try
     {
         if(running_)
         {
             // incorrect usage of the start method
-            throw std::runtime_error(ERROR_COMMAND_USAGE + "start()");
+            throw std::runtime_error("\t[USER INTERFACE] Incorrect usage of method start()!");
         }
+
+        std::cout << "\t[USER INTERFACE] initializing..."  << std::endl;
 
         // sets thread control variable to running
         running_ = true;
@@ -72,11 +70,11 @@ void UserInterface::start()
     }
     catch(const std::exception& e)
     {
-        std::cerr << "Error initializing UI: " << e.what() << std::endl;
+        std::cerr << "\t[USER INTERFACE] Error initializing: " << e.what() << std::endl;
     }
     catch(...)
     {
-        std::cerr << "Unknown error initializing UI!"  << std::endl;
+        std::cerr << "\t[USER INTERFACE] Unknown error initializing!"  << std::endl;
     }
     
 }
@@ -85,7 +83,7 @@ void UserInterface::stop()
 {
     if(!running_ || stop_requested_)
     {  // incorrect usage of the stop method
-        throw std::runtime_error(ERROR_COMMAND_USAGE + "stop()");
+        throw std::runtime_error("\t[USER INTERFACE] Incorrect usage of method stop()!");
     }
 
     disable_echo();
@@ -120,7 +118,8 @@ void UserInterface::input_loop()
             // waits to read by using select
             if (select(max_fd_, &read_fds_, nullptr, nullptr, nullptr) == -1)
             {
-                std::cerr << PROMPT_PREFIX << ERROR_READING_CRITICAL << std::endl;
+                std::cerr << "\t[USER INTERFACE] Critical error reading command line!" << std::endl;
+                running_ = false;
                 break;
             }
 
@@ -147,11 +146,13 @@ void UserInterface::input_loop()
     }
     catch(const std::exception& e)
     {
-        std::cerr << "[ERROR][USER_INTERFACE] Error occured on main_loop(): " << e.what() << std::endl;
+        std::cerr << "\t[USER_INTERFACE] Error occured on main_loop(): " << e.what() << std::endl;
+        throw std::runtime_error(e.what());
     }
     catch(...)
     {
-        std::cerr << "[ERROR][USER_INTERFACE] Unknown error occured on main_loop()!" << std::endl;
+        std::cerr << "\t[USER_INTERFACE] Unknown error occured on main_loop()!" << std::endl;
+        throw std::runtime_error("[USER_INTERFACE] Unknown error occured on main_loop()!");
     }
 }
 
