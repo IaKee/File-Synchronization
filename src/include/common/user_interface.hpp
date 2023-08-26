@@ -33,6 +33,7 @@ namespace user_interface
             void stop();
             void add_command();
             void remove_commands();
+            void async_print(std::string content);
 
             // synchronization
             std::mutex& mutex_;

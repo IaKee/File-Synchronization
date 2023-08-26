@@ -36,7 +36,7 @@ UserInterface::UserInterface(
         sanitized_commands_(sbuff)
     {
         // initialization sequence
-        disable_echo();
+        //disable_echo();
     };
 
 UserInterface::~UserInterface()
@@ -54,12 +54,14 @@ void UserInterface::start()
             // incorrect usage of the start method
             throw std::runtime_error("\t[USER INTERFACE] Incorrect usage of method start()!");
         }
+        async_utils::async_print("\t[USER INTERFACE] disabling charater echo...");
+        disable_echo();
 
-        std::cout << "\t[USER INTERFACE] initializing..."  << std::endl;
+        async_utils::async_print("\t[USER INTERFACE] initializing...");
 
         // sets thread control variable to running
         running_ = true;
-        enable_echo();
+        //enable_echo();
 
         // resets shared buffers
         command_buffer_ = "";  // resets buffer
@@ -70,11 +72,11 @@ void UserInterface::start()
     }
     catch(const std::exception& e)
     {
-        std::cerr << "\t[USER INTERFACE] Error initializing: " << e.what() << std::endl;
+        async_utils::async_print("\t[USER INTERFACE] Error initializing: " + std::string(e.what()));
     }
     catch(...)
     {
-        std::cerr << "\t[USER INTERFACE] Unknown error initializing!"  << std::endl;
+        async_utils::async_print("\t[USER INTERFACE] Unknown error initializing!");
     }
     
 }
@@ -83,12 +85,12 @@ void UserInterface::stop()
 {
     if(!running_ || stop_requested_)
     {  // incorrect usage of the stop method
-        throw std::runtime_error("\t[USER INTERFACE] Incorrect usage of method stop()!");
+        throw std::runtime_error("[USER INTERFACE] Incorrect usage of method stop()!");
     }
 
-    disable_echo();
     running_ = false;
     stop_requested_.store(true);
+    async_utils::async_print("\t[USER INTERFACE] Flags set to stop!");
 }
 
 void UserInterface::input_loop()
@@ -99,7 +101,7 @@ void UserInterface::input_loop()
         {
             {
                 std::unique_lock<std::mutex> lock(mutex_);
-                cv_.wait(lock, [this]() {return command_buffer_.size() == 0 || stop_requested_.load();});
+                cv_.wait(lock, [this](){ return command_buffer_.size() == 0 || stop_requested_.load();});
             }
     
             // checks if thread should still be running
@@ -110,35 +112,17 @@ void UserInterface::input_loop()
                 break;
             }
 
-            // retrieves cout file descriptor
-            FD_ZERO(&read_fds_);
-            FD_SET(input_descriptor_, &read_fds_);
-            max_fd_ = input_descriptor_ + 1;  // commonly file descriptors only from 0 to N-1, so the max_fd is N
-
-            // waits to read by using select
-            if (select(max_fd_, &read_fds_, nullptr, nullptr, nullptr) == -1)
+        
+            command_buffer_ = async_utils::get_buffer();
+            //async_utils::async_print("[UI]" + command_buffer_);
+            
+            std::istringstream iss(command_buffer_);
+            std::string token;
+            while(iss >> token) 
             {
-                std::cerr << "\t[USER INTERFACE] Critical error reading command line!" << std::endl;
-                running_ = false;
-                break;
+                sanitized_commands_.push_back(token);
             }
-
-            // checks for reading events on stdin
-            if (FD_ISSET(input_descriptor_, &read_fds_))
-            {   
-                if(!ignoring_)
-                {    
-                    // sanitizes command line, for further processing
-                    add_command();
-                }
-                else
-                {
-                    // ignores current user input - no way to actually block it
-                    remove_commands();
-                }
-
-                // notifies collector that the buffer is ready for processing
-            }
+           
 
             //lock.unlock();
             cv_.notify_one();
@@ -146,12 +130,12 @@ void UserInterface::input_loop()
     }
     catch(const std::exception& e)
     {
-        std::cerr << "\t[USER_INTERFACE] Error occured on main_loop(): " << e.what() << std::endl;
+        async_utils::async_print("\t[USER_INTERFACE] Error occured on main_loop(): " + std::string(e.what()));
         throw std::runtime_error(e.what());
     }
     catch(...)
     {
-        std::cerr << "\t[USER_INTERFACE] Unknown error occured on main_loop()!" << std::endl;
+        async_utils::async_print("\t[USER_INTERFACE] Unknown error occured on main_loop()!");
         throw std::runtime_error("[USER_INTERFACE] Unknown error occured on main_loop()!");
     }
 }

@@ -58,10 +58,9 @@ namespace server
             // main settings
             std::string config_dir_ = "./config";
             std::string config_file_path_ = "./config/server.json";
-            std::string sync_dir_ = "./sync_dir";
+            std::string sync_dir_ = "./sync_dir_server";
             std::string default_port_;
             json save_data_;
-
 
             // clients
             client_connection::UserGroup client_manager_;

@@ -3,6 +3,14 @@
 // c++
 #include <iostream>
 #include <ctime>
+#include <mutex>
+#include <condition_variable>
+
+// multithread & synchronization 
+#include <atomic>
+#include <thread>
+#include <condition_variable>
+#include <mutex>
 
 // local
 #include "json.hpp"
@@ -21,3 +29,16 @@ void save_json_to_file(json data, const std::string& filename);
 std::string get_machine_name();
 std::time_t get_time();
 int get_folder_space(std::string folder_path, std::string param);
+
+namespace async_utils
+{
+    static std::string terminal_buffer = "";
+    void async_print(std::string content, bool endl=true);
+    void add_to_buffer(char c);
+    void backspace_buffer();
+    std::string get_buffer();
+
+    void start_capture();
+    void stop_capture();
+    void capture_loop();
+}

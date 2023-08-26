@@ -7,6 +7,7 @@
 #include <exception>
 #include <stdexcept>
 #include <filesystem>
+#include <vector>
 
 // multithread & synchronization
 #include <thread>
@@ -24,22 +25,21 @@ using json = nlohmann::json;
 
 ClientSession::ClientSession(
     int sock_fd, 
-    std::string address,
     std::string username,
     std::string machine_name,
     std::function<void(int sock_fd, char* buffer, std::size_t buffer_size)> net_send,
     std::function<void(int sock_fd, char* buffer, std::size_t buffer_size)> net_recv,
     std::function<void(std::string message, std::string type)> broadcast_server_callback,
     std::function<void(std::string message, std::string type)> broadcast_client_callback,
-    std::function<void(int sock_fd, std::string reason)> disconnect_callback)
+    std::function<void(int sock_fd)> remove_callback)
     :   socket_fd_(sock_fd),
-        address_(address),
         username_(username),
         machine_(machine_name),
         net_send_(net_send),
         net_recv_(net_recv),
         broadcast_server_callback_(broadcast_server_callback),
         broadcast_client_callback_(broadcast_client_callback),
+        remove_callback_(remove_callback),
         start_time_(get_time()),
         last_activity_(get_time()),
         bytes_sent_(0),
@@ -74,6 +74,16 @@ std::string ClientSession::get_address()
 std::string ClientSession::get_machine_name()
 {
     return machine_;
+}
+
+void ClientSession::start_handler()
+{
+
+}
+
+void ClientSession::stop_handler()
+{
+
 }
 
 void ClientSession::send(char* buffer, std::size_t buffer_size)
@@ -137,94 +147,23 @@ int ClientSession::ping()
     return -1;
 }
 
-void ClientSession::disconnect(std::string reason = "")
+void ClientSession::disconnect(std::string reason)
 {
-    // calls dc callback to end socket
-    disconnect_callback_(socket_fd_, reason);
+    char disconnect_buffer[1024];
+    std::string disconnect_string = "logout|" + reason;
+    strcpy(disconnect_buffer, disconnect_string.c_str());
 
-    // ensures handler thread is closed
-    if(handler_started_)
+    // informs the user about the disconnection
+    send(disconnect_buffer, sizeof(disconnect_buffer));
+
+    stop_handler();
+
+    // terminates session handler thread
+    if(handler_th_.joinable())
     {
         handler_th_.join();
     }
-}
 
-std::string ClientSession::get_local_dir_path()
-{
-    return sync_dir_path_;
-}
-
-std::time_t ClientSession::get_start_time()
-{
-    {
-        std::unique_lock<std::mutex> lock(bench_mtx_);
-        bench_cv_.wait(lock, [this]() {return bench_ready_.load() || is_active_.load();});
-    }
-
-    bench_ready_.store(false);
-
-    if(!is_active_.load())
-    {
-        bench_cv_.notify_one();
-        return -1;
-    }
-
-    std::time_t start_time = start_time_;
-
-    {
-        bench_ready_.store(true);
-        bench_cv_.notify_one();
-    }
-
-    return start_time;
-}
-
-std::time_t ClientSession::get_last_activity()
-{
-    {
-        std::unique_lock<std::mutex> lock(bench_mtx_);
-        bench_cv_.wait(lock, [this]() {return bench_ready_.load() || is_active_.load();});
-    }
-
-    bench_ready_.store(false);
-
-    if(!is_active_.load())
-    {
-        bench_cv_.notify_one();
-        return -1;
-    }
-
-    std::time_t last_activity = last_activity_;
-
-    {
-        bench_ready_.store(true);
-        bench_cv_.notify_one();
-    }
-
-    return last_activity;
-}
-
-int ClientSession::get_bytes_transfered()
-{
-    {
-        std::unique_lock<std::mutex> lock(bench_mtx_);
-        bench_cv_.wait(lock, [this]() {return bench_ready_.load() || is_active_.load();});
-    }
-
-    bench_ready_.store(false);
-
-    if(!is_active_.load())
-    {
-        bench_cv_.notify_one();
-        return -1;
-    }
-
-    int bytes_transfered = bytes_recieved_ + bytes_sent_;
-
-    {
-        bench_ready_.store(true);
-        bench_cv_.notify_one();
-    }
-
-    return bytes_transfered;
+    // removes session from user manager vector
+    remove_callback_(socket_fd_);
 }

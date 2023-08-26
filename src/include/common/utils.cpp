@@ -1,5 +1,7 @@
 // c++
 #include <cstdlib>
+#include <cstdio>
+#include <ctype.h>
 #include <ctime>
 #include <iostream>
 #include <regex>
@@ -7,6 +9,9 @@
 #include <unistd.h>
 #include <filesystem>
 #include <fstream>
+#include <queue>
+#include <condition_variable>
+#include <sys/select.h>
 
 // locals
 #include "utils.hpp"
@@ -155,5 +160,124 @@ int get_folder_space(std::string folder_path, std::string param = "")
     else 
     {
         throw std::runtime_error("Given path does not exist!");
+    }
+}
+
+//std::string async_utils::terminal_buffer = std::string("");
+std::mutex cout_mtx;
+std::condition_variable cout_cv;
+
+// input capturing
+std::atomic<bool> capturing = false;
+std::thread input_th;
+std::queue<std::string> input_buffer;
+std::mutex input_mtx;
+std::condition_variable input_cv;
+void async_utils::async_print(std::string content, bool endl)
+{
+    std::lock_guard<std::mutex> out_lock(cout_mtx);
+
+    printf("\r\033[K"); // deletes current line
+    if(endl)
+    {
+        content += '\n';
+    }
+    content += "\t#> " + terminal_buffer;
+    
+    std::cout << content << std::flush;
+}
+
+void async_utils::add_to_buffer(char c)
+{
+    terminal_buffer += c;
+}
+
+void async_utils::backspace_buffer()
+{
+    terminal_buffer.pop_back();
+}
+
+std::string async_utils::get_buffer()
+{
+    {
+        std::unique_lock<std::mutex> lock(input_mtx);
+        input_cv.wait(lock, [](){return input_buffer.size() != 0;});
+    }
+
+    if(!input_buffer.empty())
+    {
+        std::string buf = input_buffer.front();
+        input_buffer.pop();
+
+        return buf;
+    }
+    return "";
+}
+
+void async_utils::start_capture()
+{
+    capturing.store(true);
+
+    input_th = std::thread(capture_loop);
+}
+
+void async_utils::stop_capture()
+{
+    capturing.store(false);
+
+    input_th.join();
+}
+
+void async_utils::capture_loop()
+{
+    struct timeval input_timeout;
+    input_timeout.tv_sec = 1;
+    input_timeout.tv_usec = 0;
+
+    char c;
+    while(capturing.load() == true)
+    {
+        fd_set read_fds;
+        FD_ZERO(&read_fds);
+        FD_SET(STDIN_FILENO, &read_fds);
+
+        int result = select(STDIN_FILENO + 1, &read_fds, nullptr, nullptr, &input_timeout);
+        
+        if(result > 0 && FD_ISSET(STDIN_FILENO, &read_fds)) 
+        {
+            c = std::cin.get();
+            {        
+                switch(c)
+                {
+                    case '\n':
+                    {
+                        std::lock_guard<std::mutex> lock(input_mtx);
+                        input_buffer.push(terminal_buffer);
+                        std::string strtmp = std::string(terminal_buffer);
+                        terminal_buffer.clear();
+                        async_print("\t#> " + strtmp);
+                        input_cv.notify_one();
+                        break;
+                    }
+                    case ' ':
+                        add_to_buffer(' ');
+                        async_print("", false);
+                        break;
+                    case 127:
+                        if(!terminal_buffer.empty())
+                        {
+                            backspace_buffer();
+                            async_print("", false);
+                        }
+                        break;
+                    default:
+                        if(isalnum(c))
+                        {
+                            add_to_buffer(c);
+                            async_print("", false);
+                        }
+                }
+            }
+        }
     }
 }

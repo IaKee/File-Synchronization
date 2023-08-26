@@ -14,7 +14,6 @@
 // locals
 #include "client_connection.hpp"
 #include "../include/common/json.hpp"
-#include "../include/common/lang.hpp"
 #include "../include/common/utils.hpp"
 #include "../include/common/user_interface.hpp"
 #include "server.hpp"
@@ -25,19 +24,21 @@ using namespace server;
 
 Server::Server()
 	:	S_UI_(ui_mutex, ui_cv, ui_buffer, ui_sanitized_buffer),
-		internet_manager()
+		internet_manager(),
+		stop_requested_(false)
 {
+	
 	// init sequence
 	std::string machine_name = get_machine_name();
-	std::cout << "[STARTUP] Initializing at " << machine_name << "..." << std::endl;
+	async_utils::async_print("[STARTUP] Initializing at " + machine_name + "...");
 
 	// settings init
-	std::cout << "\t[SYNCWIZARD SERVER] Trying to restore settings from previous session..." << std::endl;
+	async_utils::async_print("\t[SYNCWIZARD SERVER] Trying to restore settings from previous session...");
 
 	if(!is_valid_path(config_file_path_))
 	{
 		// first initialization
-		std::cout << "\t[SYNCWIZARD SERVER] Could not load previous settings, restoring defaults..." << std::endl;
+		async_utils::async_print("\t[SYNCWIZARD SERVER] Could not load previous settings, restoring defaults...");
 		
 		if(!is_valid_path(config_dir_))
 		{
@@ -48,7 +49,7 @@ Server::Server()
 			}
 			else
 			{
-				std::cout << "\t[SYNCWIZARD SERVER] Config directory created!" << std::endl;
+				async_utils::async_print("\t[SYNCWIZARD SERVER] Config directory created!");
 			}
 		}
 
@@ -58,13 +59,13 @@ Server::Server()
 		}
 		else
 		{
-			std::cout << "\t[SYNCWIZARD SERVER] Settings file created! Filling defaults..." << std::endl;
+			async_utils::async_print("\t[SYNCWIZARD SERVER] Settings file created! Filling defaults...");
 			
 			// TODO: fill file with defaults here
 			save_data_["default_port"] = 65534;
 
 			save_json_to_file(save_data_, config_file_path_);
-			std::cout << "\t[SYNCWIZARD SERVER] Defaults written to config file!" << std::endl;
+			async_utils::async_print("\t[SYNCWIZARD SERVER] Defaults written to config file!");
 		}
 
 		if(!is_valid_path(sync_dir_))
@@ -86,7 +87,7 @@ Server::Server()
 	}
 	catch(const std::exception& e)
 	{
-		std::cerr << "\t[SYNCWIZARD SERVER] Could not read settings file!" << std::endl;
+		async_utils::async_print("\t[SYNCWIZARD SERVER] Could not read settings file!");
 		throw std::runtime_error(e.what());
 	}
 	
@@ -99,17 +100,15 @@ Server::Server()
 
 	std::string addr = internet_manager.get_address();
 	int port = internet_manager.get_port();
-	std::cout << "[STARTUP] Server running at " << addr <<
-		":" << port << "(" << internet_manager.get_sock_fd() << ")" << std::endl;
+	async_utils::async_print("[STARTUP] Server running at " + addr + ":" + 
+		std::to_string(port) + "(" + std::to_string(internet_manager.get_sock_fd()) + ")");
 	
 	S_UI_.start();
 };
 
 Server::~Server()
 {
-	// destructor
-	std::cout << "\t[SYNCWIZARD SERVER] Terminating server..." << std::endl;
-	internet_manager.close_socket();
+	close();
 };
 
 void Server::start()
@@ -124,18 +123,19 @@ void Server::start()
 
 	try
 	{	
-		running_ = true;
 		// begins application main loop
+		running_ = true;
+		stop_requested_.store(false);
 		main_loop();
 	}
 	catch(const std::exception& e)
 	{
-		std::cerr << "[SYNCWIZARD SERVER] Error occured on start(): " << e.what() << std::endl;
+		async_utils::async_print("[SYNCWIZARD SERVER] Error occured on start(): " + std::string(e.what()));
 		throw std::runtime_error(e.what());
 	}
 	catch(...)
 	{
-		std::cerr << "[SYNCWIZARD SERVER] Unknown error occured on start()!" << std::endl;
+		async_utils::async_print("[SYNCWIZARD SERVER] Unknown error occured on start()!");
 		throw std::runtime_error("[SYNCWIZARD SERVER] Unknown error occured on start()!");
 	}
 }
@@ -145,144 +145,90 @@ void Server::stop()
 	// stop user interface and command processing
 	try
 	{
-		std::cout << "\t[SYNCWIZARD SERVER] Closing, please wait..." << std::endl;
+		async_utils::async_print("\t[SYNCWIZARD SERVER] Closing, please wait...");
 
 		stop_requested_.store(true);
-		//internet_manager.running_accept_.store(false);
-		accept_th_.join();
+		running_ = false;
 		
 		S_UI_.stop();
-		
 		ui_cv.notify_all();
 
+		internet_manager.stop_accepting_connections();
+		accept_th_.join();
 	}
 	catch(const std::exception& e)
 	{
-		std::cerr << "\t[SYNCWIZARD SERVER] Error occured on stop(): " << e.what() << std::endl;
+		async_utils::async_print("\t[SYNCWIZARD SERVER] Error occured on stop(): " + std::string(e.what()));
 		throw std::runtime_error(e.what());
 	}
 	catch(...)
 	{
-		std::cerr << "\t[SYNCWIZARD SERVER] Unknown error occured on stop()!" << std::endl;
+		async_utils::async_print("\t[SYNCWIZARD SERVER] Unknown error occured on stop()!");
 		throw std::runtime_error("Unknown error occured on stop()!");
 	}
+
+	async_utils::async_print("\t[SYNCWIZARD SERVER] Main components closed!");
 }
 
 void Server::close()
 {
-	// closes remaining threads
+	// closes remaining components/threads
+	internet_manager.close_socket();
 	S_UI_.input_thread_.join();
-	accept_th_.join();
 }
 
-/*
-void Connection::handle_client(int client_socket)
+void Server::handle_new_session(int new_socket, std::string username, std::string machine)
 {
-	// processes connection requests
+	// processes new connection requests
     try
     {
-		// message size
-        char buffer[1024] = {0};
-
-		// sets identification timeout to 10 seconds
-		// if the client does not respond within this period, the connection is terminated
-		int timeout_in_seconds = 10;
-        setsockopt(client_socket, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<char*>(&timeout_in_seconds), sizeof(timeout_in_seconds));
-
-        // receive the username and hostname from the client
-        int bytes_recieved = recv(client_socket, buffer, sizeof(buffer), 0);
-
-        if(bytes_recieved > 0) 
+		client_connection::User* new_user = client_manager_.get_user(username);
+		if(new_user == nullptr)
 		{
-            std::string received_data(buffer, bytes_recieved);
+			// session is from a new user, add to the list
+			client_manager_.load_user(username);
 
-            // Split the received data into username and hostname
-            size_t delimiter_pos = received_data.find('|');
-            if(delimiter_pos != std::string::npos) 
+			// tries to retrieve newly added user
+			new_user = client_manager_.get_user(username);
+
+			if(new_user == nullptr)
 			{
-                std::string username = received_data.substr(0, delimiter_pos);
-                std::string hostname = received_data.substr(delimiter_pos + 1);
-
-				client_connection::User* client_ptr = this->client_manager_.get_user(username);
-
-				if(client_ptr == nullptr)
-				{
-					// checks if client had logged in before adds new client/session
-				}
-				else
-				{
-					// client is connected, checks if it is possible to add a new session
-					int max_sessions = client_ptr->get_session_limit();
-					int current_sessions = client_ptr->get_active_session_count();
-
-					if(current_sessions < max_sessions)
-					{
-						// under the session limit, add client session as a active connection
-					}
-					else
-					{
-						// refuse client due to it expiring the session limit
-					}
-				}
-
-				
-                // Simulate validation of username and hostname
-                if (is_valid_username_and_hostname(username, hostname)) 
-				{
-                    // Check if the maximum number of connections for this user has been reached (2 in this example)
-                    if(count_connections_for_user(username) >= 2) 
-					{
-                        // Inform the client that the connection is refused due to too many connections
-                        std::string refusal_reason = "Connection refused: Maximum number of connections reached for user '" + username + "'.";
-                        send(client_socket, refusal_reason.c_str(), refusal_reason.size(), 0);
-                        closesocket(client_socket); // Close the socket
-                    } 
-					else 
-					{
-                        // Add the client to the list of active connections for this user
-                        add_client_to_user_connections(username, client_socket);
-
-                        // Continue with the rest of the client handling logic here
-                        // ...
-
-                        // For demonstration purposes, we are closing the socket immediately after handling
-                        closesocket(client_socket);
-                    }
-                } 
-				else 
-				{
-                    // Inform the client that the connection is refused due to invalid username or hostname
-                    std::string refusal_reason = "Connection refused: Invalid username or hostname.";
-                    send(client_socket, refusal_reason.c_str(), refusal_reason.size(), 0);
-                    closesocket(client_socket); // Close the socket
-                }
-            }
-        }
-		else if(bytes_recieved == 0)
-		{
-			std::cout << "Client closed the connection" << std::endl;
-		}
-		else
-		{
-			if(errno == EAGAIN || errno == EWOULDBLOCK) 
-			{
-				std::cout << "Connection timeout" << std::endl;
+				throw std::runtime_error("[SYNCWIZARD SERVER] User was wrongly or not added to the user manager!");
 			}
-			else
+		}
+		
+		// checks if there is already a session on the given socket
+		client_connection::ClientSession* new_session = new_user->get_session(new_socket);
+		if(new_session == nullptr)
+		{	
+			// creates new session instance
+			client_connection::ClientSession created_session(
+				new_socket, 
+				username, 
+				machine,
+				internet_manager.send_data,
+				internet_manager.recieve_data,
+				new_user->broadcast,
+				new_user->remove_session)
+			new_session = new_user->add_session(new_socket, created_session);
+
+			// tries to retrieve newly added session
+			client_connection::ClientSession* new_session = new_user->get_session(new_socket);
+			if(new_session == nullptr)
 			{
-				std::cout << "Unknown connection error" << std::endl;
+				throw std::runtime_error("[SYNCWIZARD SERVER] Session was wrongly or not added to the user manager!");
 			}
 		}
     }
     catch(const std::exception& e)
     {
-        std::cerr << "[CONNECTION MANAGER] Error occurred on handle_client(): " << e.what() << std::endl;
+        async_utils::async_print("\t[SYNCWIZARD SERVER] Exception occurred while processing new session: \n\t\t" + e.what());
     }
     catch(...)
     {
-        std::cerr << "[CONNECTION MANAGER] Unknown error occurred on handle_client()!" << std::endl;
+        async_utils::async_print("\t[SYNCWIZARD SERVER] Unknown exception occurred while processing new session!");
     }
-}*/
+}
 
 /*void Server::process_connections(int client_socket) 
 {
@@ -371,6 +317,7 @@ void Connection::handle_client(int client_socket)
 
 }*/
 
+
 void Server::process_input()
 {
 	// process input buffer and calls methods accordingly
@@ -384,23 +331,23 @@ void Server::process_input()
 			if(ui_sanitized_buffer.front() == "exit")
 			{
 				stop();
+				break;
 			}
 			else
 			{
-				std::cout << "\t[SYNCWIZARD SERVER] No such command exists!" << std::endl;
-				std::cout << "\t[SYNCWIZARD SERVER] Please enter 'help' for a detailed list commands for this application.!" << std::endl;
+				async_utils::async_print("\t[SYNCWIZARD SERVER] Could not find a command by \"" + ui_buffer + "\"!");
 			}
 			break;
 		default:
-			std::cout << "\t[SYNCWIZARD SERVER] No such command exists!" << std::endl;
-			std::cout << "\t[SYNCWIZARD SERVER] Please enter 'help' for a detailed list commands for this application.!" << std::endl;
+			async_utils::async_print("\t[SYNCWIZARD SERVER] Could not find a command by \"" + ui_buffer + "\"!");
 			break;
 	}
 }
 
+
 void Server::main_loop()
 {
-	std::cout << "\t[SYNCWIZARD SERVER] Starting up server main loop..." << std::endl;
+	async_utils::async_print("\t[SYNCWIZARD SERVER] Starting up server main loop...");
 	try
 	{
 		while(running_)
@@ -408,7 +355,7 @@ void Server::main_loop()
 			{
 				// inserts prompt prefix before que actual user command
 				std::lock_guard<std::mutex> lock(ui_mutex);
-				std::cout << "\t#> " << std::flush;
+				//async_utils::async_print("\t#> ", false);
 			}   
 
 			{
@@ -418,10 +365,11 @@ void Server::main_loop()
 			//std::cout << "started loop running ui" << std::endl;
 
 			// checks again if the client should be running
-			if(stop_requested_.load())
+			if(stop_requested_.load() == true)
 			{
 				ui_cv.notify_one();
-				break;
+				async_utils::async_print("\t[SYNCWIZARD SERVER] Main loop terminated!");
+				return;
 			}
 			
 			process_input();
@@ -432,16 +380,18 @@ void Server::main_loop()
 
 			// notifies UI_ that the buffer is free to be used again
 			ui_cv.notify_one();
+			
 		}
+		async_utils::async_print("\t[SYNCWIZARD SERVER] Main loop terminated!");
 	}
 	catch (const std::exception& e)
 	{
-		std::cerr << "\t[SYNCWIZARD SERVER] Error occured on main_loop(): " << e.what() << std::endl;
+		async_utils::async_print("\t[SYNCWIZARD SERVER] Error occured on main_loop(): ");
 		throw std::runtime_error(e.what());
 	}
 	catch (...) 
 	{
-		std::cerr << "\t[SYNCWIZARD SERVER] Unknown error occured on main_loop()!" << std::endl;
+		async_utils::async_print("\t[SYNCWIZARD SERVER] Unknown error occured on main_loop()!");
 		throw std::runtime_error("Unknown error occured on main_loop()");
 	}
 }

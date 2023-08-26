@@ -34,7 +34,7 @@ Client::Client(const std::string& u, const std::string& add, const int& p)
     std::string machine_name = get_machine_name();
 
     // lang strings
-    std::cout << "[STARTUP] SyncWizard Client initializing on " << machine_name << "..." << std::endl;
+    async_utils::async_print("[STARTUP] SyncWizard Client initializing on " + machine_name + "...");
     std::string ERROR_PARSING_CRITICAL = "Critical error parsing command-line options:";
     std::string ERROR_PARSING_MISSING = "Missing required command-line options!";
     std::string ERROR_PARSING_USERNAME = "Invalid username! It must be between 1 and 12 characters long, \
@@ -54,8 +54,8 @@ Client::Client(const std::string& u, const std::string& add, const int& p)
 
     if(error_description != "")
     {   
-        std::cout << "\t[SYNCWIZARD CLIENT] " + error_description << std::endl;
-        std::cout << "\t[SYNCWIZARD CLIENT] " + RUN_INFO << std::endl;
+        async_utils::async_print("\t[SYNCWIZARD CLIENT] " + error_description);
+        async_utils::async_print("\t[SYNCWIZARD CLIENT] " + RUN_INFO);
         throw std::invalid_argument(ERROR_PARSING_CRITICAL);
     }
 
@@ -66,11 +66,12 @@ Client::Client(const std::string& u, const std::string& add, const int& p)
     server_address_ = connection_.get_host_by_name(add);
 
     // connects to server
-    //std::cout << PROMPT_PREFIX_CLIENT << CONNECTING_TO_SERVER;
-    //std::cout.flush();
-    //connection_.connect_to_server(server_address_, server_port_);
-    //std::cout << DONE_SUFIX << std::endl;
-
+    async_utils::async_print("\t[SYNCWIZARD CLIENT] " + CONNECTING_TO_SERVER);
+    connection_.connect_to_server(server_address_, server_port_);
+    
+    char buffer[1024] = "abuble";
+    connection_.send_data(buffer, sizeof(buffer));
+    
     // initializes user interface last
     UI_.start();
 };
@@ -112,14 +113,14 @@ void Client::process_input()
                 break;
             }
             
-            std::cout << "\t[SYNCWIZARD CLIENT] Could not find a valid command by \"" + command_buffer_ + "\"!" << std::endl;
+            async_utils::async_print("\t[SYNCWIZARD CLIENT] Could not find a valid command by \"" + command_buffer_ + "\"!");
             break;
         case 2:
             // TODO: main commands goes here
             break;
         
         default:
-            std::cout << "\t[SYNCWIZARD CLIENT] Could not find a valid command by \"" + command_buffer_ + "\"!" << std::endl;
+            async_utils::async_print("\t[SYNCWIZARD CLIENT] Could not find a valid command by \"" + command_buffer_ + "\"!");
             break;
     }
 }
@@ -133,8 +134,8 @@ void Client::main_loop()
             {
                 // inserts promt prefix before que actual user command
                 std::lock_guard<std::mutex> lock(mutex_);
-                std::cout << "\t#> ";  // prompt prefix
-                std::cout.flush();
+                //std::cout << "\t#> ";  // prompt prefix
+                //std::cout.flush();
             }   
 
             {
@@ -152,7 +153,7 @@ void Client::main_loop()
             process_input();
 
             // resets shared buffers
-            command_buffer_ = "";
+            command_buffer_.clear();
             sanitized_commands_.clear();
 
             // notifies UI_ that the buffer is free to be used again
@@ -161,12 +162,12 @@ void Client::main_loop()
     }
     catch (const std::exception& e)
     {
-        std::cerr << "[SYNCWIZARD CLIENT] Exception occured on main_loop(): " << e.what() << std::endl;
+        async_utils::async_print("[SYNCWIZARD CLIENT] Exception occured on main_loop(): " + std::string(e.what()));
         throw std::runtime_error(e.what());
     }
     catch (...) 
     {
-        std::cerr << "[SYNCWIZARD CLIENT] Unknown exception occured on main_loop()!" << std::endl;
+        async_utils::async_print("[SYNCWIZARD CLIENT] Unknown exception occured on main_loop()!");
         throw std::runtime_error("Unknown error occured on main_loop()!");
     }
 }
@@ -179,12 +180,12 @@ void Client::start()
     }
     catch(const std::exception& e)
     {
-        std::cerr << "[SYNCWIZARD CLIENT] Exception occured on start(): " << e.what() << std::endl;
+        async_utils::async_print("[SYNCWIZARD CLIENT] Exception occured on start(): " + std::string(e.what()));
         throw std::runtime_error(e.what());
     }
     catch(...)
     {
-        std::cerr << "[SYNCWIZARD CLIENT] Unknown exception occured on start()!" << std::endl;
+        async_utils::async_print("[SYNCWIZARD CLIENT] Unknown exception occured on start()!");
         throw std::runtime_error("Unknown error occured on start()!");
     }
     
@@ -195,7 +196,7 @@ void Client::stop()
     // stop user interface and command processing
     try
     {
-        std::cout << "\t[SYNCWIZARD CLIENT] " << EXIT_MESSAGE << std::endl;
+        async_utils::async_print("\t[SYNCWIZARD CLIENT] " + EXIT_MESSAGE);
 
         stop_requested_.store(true);
         running_ = false;
@@ -207,12 +208,12 @@ void Client::stop()
     }
     catch(const std::exception& e)
     {
-        std::cerr << "[SYNCWIZARD CLIENT] Error occured on stop(): " << e.what() << std::endl;
+        async_utils::async_print("[SYNCWIZARD CLIENT] Error occured on stop(): " + std::string(e.what()));
         throw std::runtime_error(e.what());
     }
     catch(...)
     {
-        std::cerr << "[SYNCWIZARD CLIENT] Unknown error occured on stop()!" << std::endl;
+        async_utils::async_print("[SYNCWIZARD CLIENT] Unknown error occured on stop()!");
         throw std::runtime_error("Unknown error occured on stop()!");
     }
 }
