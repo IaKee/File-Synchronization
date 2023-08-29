@@ -25,7 +25,7 @@ bool is_valid_port(int port);
 bool is_valid_path(std::string path);
 bool create_directory(const std::string& path);
 bool create_file(const std::string& path);
-bool delete_file(const std::string& file_path);
+void delete_file(const std::string& file_path);
 json get_json_contents(const std::string& path);
 void save_json_to_file(json data, const std::string& filename);
 std::string get_machine_name();
@@ -34,7 +34,7 @@ std::string get_file_name(std::string& path);
 std::string calculate_md5_checksum(const std::string& file_path);
 void rename_replacing(std::string& old_path, std::string& new_path);
 int get_folder_space(std::string folder_path, std::string param);
-std::list<std::string> split_buffer(const char* buffer);
+std::vector<std::string> split_buffer(const char* buffer);
 
 namespace async_utils
 {

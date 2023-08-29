@@ -18,8 +18,12 @@
 #include <unistd.h>
 #include <sys/select.h>
 
-// OpenSSL
-#include <openssl/md5.h>
+#define CRYPTOPP_ENABLE_NAMESPACE_WEAK 1
+#include <cryptopp/cryptlib.h>
+#include <cryptopp/md5.h>
+#include <cryptopp/hex.h>
+#include <cryptopp/files.h>
+
 
 // locals
 #include "utils.hpp"
@@ -148,37 +152,20 @@ std::string get_file_name(std::string& path)
     return path_obj.filename().string();
 }
 
-std::string calculate_md5_checksum(const std::string& file_path)
+std::string calculate_md5_checksum(const std::string& filepath) 
 {
-    unsigned char md5_digest[MD5_DIGEST_LENGTH];
-    MD5_CTX md5_ctx;
-    MD5_Init(&md5_ctx);
+    CryptoPP::Weak1::MD5 md5;
+    std::string digest;
 
-    std::ifstream file(file_path, std::ios::binary);
+    CryptoPP::FileSource file(filepath.c_str(), true,
+        new CryptoPP::HashFilter(md5, new CryptoPP::HexEncoder(new CryptoPP::StringSink(digest))));
 
-    if (!file.is_open()) {
-        throw std::runtime_error("Could not open the file.");
-    }
-
-    char buffer[1024];
-    while (file.read(buffer, sizeof(buffer))) {
-        MD5_Update(&md5_ctx, buffer, file.gcount());
-    }
-
-    file.close();
-    MD5_Final(md5_digest, &md5_ctx);
-
-    std::stringstream ss;
-    for (int i = 0; i < MD5_DIGEST_LENGTH; ++i) {
-        ss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(md5_digest[i]);
-    }
-
-    return ss.str();
+    return digest;
 }
 
 void rename_replacing(std::string& old_path, std::string& new_path)
 {
-    if(!std::rename(old_path, new_path))
+    if(!std::rename(old_path.c_str(), new_path.c_str()))
     {
         throw std::runtime_error("Could nome rename file " + old_path);
     }
@@ -221,9 +208,9 @@ int get_folder_space(std::string folder_path, std::string param = "")
     }
 }
 
-std::list<std::string> split_buffer(const char* buffer) 
+std::vector<std::string> split_buffer(const char* buffer) 
 {
-    std::list<std::string> tokens;
+    std::vector<std::string> tokens;
     
     const char* start_pos = buffer;
     const char* end_pos = std::strchr(buffer, '|');

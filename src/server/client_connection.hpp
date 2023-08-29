@@ -50,9 +50,9 @@ namespace client_connection
             void session_handler_loop();
             
             // recieve handler
-            void start_reciever();
-            void stop_reciever();
-            void session_reciever_loop();
+            void start_receiver();
+            void stop_receiver();
+            void session_receiver_loop();
 
             // send handler
             void start_sender();
@@ -75,11 +75,11 @@ namespace client_connection
             std::thread sender_th_;
             std::list<std::pair<char*, std::size_t>> sender_buffer_;
 
-            std::atomic<bool> running_reciever_;
-            std::thread reciever_th_;
+            std::atomic<bool> running_receiver_;
+            std::thread receiver_th_;
             std::mutex recieve_mtx_;
             std::size_t expected_buffer_size = 1024;
-            std::list<std::pair<char*, std::size_t>> reciever_buffer_;
+            std::list<std::pair<char*, std::size_t>> receiver_buffer_;
             const char EOF_MARKER = 0xFF;
 
             // other

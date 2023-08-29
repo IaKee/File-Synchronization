@@ -23,10 +23,10 @@ namespace user_interface
     {
         public:
             UserInterface(
-                std::mutex& mutex,
-                std::condition_variable& cv,
-                std::string& buff,
-                std::vector<std::string>& sbuff);
+                std::mutex* mutex,
+                std::condition_variable* cv,
+                std::string* buff,
+                std::vector<std::string>* sbuff);
             ~UserInterface();
             
             void start();
@@ -36,10 +36,10 @@ namespace user_interface
             void async_print(std::string content);
 
             // synchronization
-            std::mutex& mutex_;
-            std::condition_variable& cv_;
-            std::string& command_buffer_;
-            std::list<std::string>& sanitized_commands_;
+            std::mutex* mutex_;
+            std::condition_variable* cv_;
+            std::string* command_buffer_;
+            std::vector<std::string>* sanitized_commands_;
             std::thread input_thread_;
 
         private:

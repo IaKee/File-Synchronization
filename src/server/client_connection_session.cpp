@@ -43,19 +43,19 @@ ClientSession::ClientSession(
         send_callback_(send_callback),
         recieve_callback_(recieve_callback),
         broadcast_user_callback_(broadcast_user_callback),
-        running_reciever_(false),
+        running_receiver_(false),
         running_sender_(false),
         initializing_(true)
 {
     async_utils::async_print("\t[SESSION MANAGER] Starting up new session for user " + username_ + "(" + std::to_string(socket_fd_) + ")");
     start_sender();
-    start_reciever();
+    start_receiver();
     async_utils::async_print("\t[SESSION MANAGER] Started!");
 }
 
 ClientSession::~ClientSession()
 {
-    stop_reciever();
+    stop_receiver();
     stop_sender();
 }
 
@@ -79,34 +79,34 @@ std::string ClientSession::get_machine_name()
     return machine_;
 }
 
-void ClientSession::start_reciever()
+void ClientSession::start_receiver()
 {
-    running_reciever_.store(true);
-    reciever_th_ = std::thread(
+    running_receiver_.store(true);
+    receiver_th_ = std::thread(
         [this]()
         {
-            session_reciever_loop();
+            session_receiver_loop();
         });
 }
 
-void ClientSession::stop_reciever()
+void ClientSession::stop_receiver()
 {
-    if(reciever_th_.joinable())
+    if(receiver_th_.joinable())
     {
-        reciever_th_.join();
+        receiver_th_.join();
     }
 }
 
-void ClientSession::session_reciever_loop()
+void ClientSession::session_receiver_loop()
 {
-    running_reciever_.store(true);
-    while(running_reciever_.load())
+    running_receiver_.store(true);
+    while(running_receiver_.load())
     {
         std::unique_lock<std::mutex> lock(recieve_mtx_);
-        if (!running_reciever_.load())
+        if (!running_receiver_.load())
         {
             async_utils::async_print("[SESSION MANAGER] Sender stop requested!");
-            running_reciever_.store(false);
+            running_receiver_.store(false);
             return;
         }
 
@@ -134,7 +134,7 @@ void ClientSession::session_reciever_loop()
                         // sends logout confirmation to user
                         std::unique_lock<std::mutex> lock(send_mtx_);
                         this->disconnect("exit|ok");
-                        running_reciever_.store(false);
+                        running_receiver_.store(false);
                         running_sender_.store(false);
                         running_handler_.store(false);
                         std::string output("\t[SESSION MANAGER] User \"" + username_ + "\" session: ");
@@ -342,7 +342,7 @@ void ClientSession::session_reciever_loop()
                         {
                             {
                                 std::unique_lock<std::mutex> lock(send_mtx_);
-                                char buffer[1024] = "failed";
+                                char buffer[1024] = "fail";
                                 sender_buffer_.push_back(std::make_pair(buffer, sizeof(buffer)));
                             }
                             break;
@@ -518,7 +518,7 @@ void ClientSession::disconnect(std::string reason)
     send(disconnect_buffer, sizeof(disconnect_buffer));
 
     stop_handler();
-    stop_reciever();
+    stop_receiver();
     stop_sender();
 
     close(socket_fd_);

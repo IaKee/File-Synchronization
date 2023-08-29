@@ -1,7 +1,7 @@
 // c++
 #include <iostream>
 #include <list>
-
+#include <vector>
 // c
 #include <sys/inotify.h>
 #include <unistd.h>
@@ -15,26 +15,27 @@ const int BUF_LEN = 1024;
 
 using namespace inotify_watcher;
 
-InotifyWatcher::InotifyWatcher(
-    std::string& path_to_watch, 
-    std::list<std::string>& inotify_buffer,
-    std::mutex& inotify_buffer_mtx)
-    :   watched_path_(path_to_watch), 
-        inotify_buffer_(inotify_buffer), 
-        inotify_buffer_mtx_(inotify_buffer_mtx),
-        is_running_(false) 
-{
-
-};
-
 InotifyWatcher::InotifyWatcher()
+    : is_running_(false)
 {
 
 };
 
 InotifyWatcher::~InotifyWatcher() 
 {
+    is_running_.store(false);
     stop_watching();
+}
+
+void InotifyWatcher::init(
+    std::string& path_to_watch, 
+    std::vector<std::string>& inotify_buffer,
+    std::mutex& inotify_buffer_mtx)
+{
+    watched_path_ = &path_to_watch; 
+    inotify_buffer_ = &inotify_buffer; 
+    inotify_buffer_mtx_ = &inotify_buffer_mtx;
+    is_running_.store(false);
 }
 
 void InotifyWatcher::start_watching() 
@@ -48,7 +49,7 @@ void InotifyWatcher::start_watching()
         return;
     }
 
-    int wd = inotify_add_watch(watched_path_fd_, watched_path_.c_str(), IN_CREATE | IN_MODIFY | IN_DELETE);
+    int wd = inotify_add_watch(watched_path_fd_, watched_path_->c_str(), IN_CREATE | IN_MODIFY | IN_DELETE);
     
     if(wd < 0) 
     {
@@ -117,19 +118,24 @@ void InotifyWatcher::process_event(const FileEvent& event)
 {
     if (event.mask & IN_CREATE) 
     {
-        std::unique_lock<std::mutex> lock(inotify_buffer_mtx_);
-        inotify_buffer_.push_back("inotify|create|" + event.filename);
+        std::unique_lock<std::mutex> lock(*inotify_buffer_mtx_);
+        inotify_buffer_->push_back("inotify|create|" + event.filename);
     }
 
     if (event.mask & IN_MODIFY) 
     {
-        std::unique_lock<std::mutex> lock(inotify_buffer_mtx_);
-        inotify_buffer_.push_back("inotify|modify|" + event.filename);
+        std::unique_lock<std::mutex> lock(*inotify_buffer_mtx_);
+        inotify_buffer_->push_back("inotify|modify|" + event.filename);
     }
 
     if (event.mask & IN_DELETE) 
     {
-        std::unique_lock<std::mutex> lock(inotify_buffer_mtx_);
-        inotify_buffer_.push_back("inotify|delete|" + event.filename);
+        std::unique_lock<std::mutex> lock(*inotify_buffer_mtx_);
+        inotify_buffer_->push_back("inotify|delete|" + event.filename);
     }
+}
+
+bool InotifyWatcher::is_running()
+{
+    return is_running_.load();
 }

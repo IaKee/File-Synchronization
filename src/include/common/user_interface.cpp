@@ -22,10 +22,10 @@
 using namespace user_interface;
 
 UserInterface::UserInterface(
-    std::mutex& mutex,
-    std::condition_variable& cv,
-    std::string& buff,
-    std::vector<std::string>& sbuff)
+    std::mutex* mutex,
+    std::condition_variable* cv,
+    std::string* buff,
+    std::vector<std::string>* sbuff)
     :   max_fd_(0),
         input_descriptor_(STDIN_FILENO),
         running_(false),
@@ -64,8 +64,8 @@ void UserInterface::start()
         //enable_echo();
 
         // resets shared buffers
-        command_buffer_ = "";  // resets buffer
-        sanitized_commands_.clear();
+        *command_buffer_ = "";  // resets buffer
+        sanitized_commands_->clear();
         
         // starts user input thread for command collection
         input_thread_ = std::thread(&UserInterface::input_loop, this);
@@ -100,32 +100,31 @@ void UserInterface::input_loop()
         while(running_)
         {
             {
-                std::unique_lock<std::mutex> lock(mutex_);
-                cv_.wait(lock, [this](){ return command_buffer_.size() == 0 || stop_requested_.load();});
+                std::unique_lock<std::mutex> lock(*mutex_);
+                cv_->wait(lock, [this](){ return command_buffer_->size() == 0 || stop_requested_.load();});
             }
     
             // checks if thread should still be running
             if(stop_requested_.load())
             {
-                //lock.unlock();
-                cv_.notify_one();
+                cv_->notify_one();
                 break;
             }
 
         
-            command_buffer_ = async_utils::get_buffer();
+            *command_buffer_ = async_utils::get_buffer();
             //async_utils::async_print("[UI]" + command_buffer_);
             
-            std::istringstream iss(command_buffer_);
+            std::istringstream iss(*command_buffer_);
             std::string token;
             while(iss >> token) 
             {
-                sanitized_commands_.push_back(token);
+                sanitized_commands_->push_back(token);
             }
            
 
             //lock.unlock();
-            cv_.notify_one();
+            cv_->notify_one();
         }
     }
     catch(const std::exception& e)
@@ -150,19 +149,19 @@ void UserInterface::add_command()
     std::string word;
     while (iss >> word) 
     {
-        sanitized_commands_.push_back(word);
+        sanitized_commands_->push_back(word);
     }
 
     // updates buffer
-    command_buffer_ = line;
+    *command_buffer_ = line;
 
     std::cout.flush();
 }
 
 void UserInterface::remove_commands()
 {
-    sanitized_commands_.clear();
-    command_buffer_ = "";
+    sanitized_commands_->clear();
+    *command_buffer_ = "";
 }
 
 void UserInterface::disable_echo()
