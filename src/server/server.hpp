@@ -4,6 +4,7 @@
 #include <iostream>
 #include <string>
 #include <thread>
+#include <queue>
 
 // connection
 #include <sys/socket.h>
@@ -13,8 +14,8 @@
 
 // locals
 #include "client_connection.hpp"
-#include "../include/common/json.hpp"
 #include "../include/common/user_interface.hpp"
+#include "../include/common/utils.hpp"
 
 using json = nlohmann::json;
 
@@ -37,7 +38,7 @@ namespace server
             void start();
             void stop();
             void close();
-            void handle_client(int client_socket);
+            void handle_new_session(int new_socket, std::string username, std::string machine);
             void process_input();
             void main_loop();
 
@@ -56,11 +57,8 @@ namespace server
             user_interface::UserInterface S_UI_;
 
             // main settings
-            std::string config_dir_ = "./config";
-            std::string config_file_path_ = "./config/server.json";
             std::string sync_dir_ = "./sync_dir_server";
             std::string default_port_;
-            json save_data_;
 
             // clients
             client_connection::UserGroup client_manager_;

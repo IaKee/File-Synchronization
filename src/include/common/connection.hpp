@@ -34,7 +34,7 @@ namespace connection
             void create_socket();
             void create_server();
             void connect_to_server(const std::string& ip_addr, int port);
-            void server_accept_loop(std::function<bool(int, std::string, std::string)> connection_stablished_callback = nullptr);
+            void server_accept_loop(std::function<void(int, std::string, std::string)> connection_stablished_callback = nullptr);
             void close_socket();
             void start_accepting_connections();
             void stop_accepting_connections();

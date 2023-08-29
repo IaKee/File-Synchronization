@@ -121,7 +121,7 @@ void Connection::connect_to_server(const std::string& ip_addr, int port)
 }
 
 void Connection::server_accept_loop(
-    std::function<bool(int, std::string, std::string)> connection_stablished_callback) 
+    std::function<void(int, std::string, std::string)> connection_stablished_callback) 
 {
     async_utils::async_print("\t[CONNECTION MANAGER] Starting server accept loop...");
 
@@ -153,70 +153,70 @@ void Connection::server_accept_loop(
                     
                     if(new_socket >= 0) 
                     {
-                        async_utils::async_print("\t[CONNECTION MANAGER] We got ourselves a new connection!");
+                        async_utils::async_print("\t[CONNECTION MANAGER] Got a new connection!");
                         
                         // connection stablished, tries to recieve identification from the new user
                         try
                         {
-                            if(connection_stablished_callback != nullptr)
+                            char buffer[1024];
+                            recieve_data(buffer, sizeof(buffer), new_socket);
+                            
+                            // decodes string
+                            char* username_token = strtok(buffer, "|");
+                            char* machine_name_token = strtok(nullptr, "|");
+                            std::string username;
+                            std::string machine_name;
+                            if(username_token && machine_name_token) 
                             {
-                                async_utils::async_print("\t[CONNECTION MANAGER] Got a new connection, running callback...");
-                                connection_stablished_callback(new_socket);
-                                close(new_socket);
+                                username = username_token;
+                                machine_name = machine_name_token;
                             }
                             else
                             {
-                                // todo: get username, addres, machine name
-                                // or refuse
-                                char buffer[1024];
-                                recieve_data(buffer, sizeof(buffer), new_socket);
-                                
-                                // decodes string
-                                std::string username = strtok(buffer, "|");
-                                std::string machine_name = strtok(NULL, "|");
-
-                                if(username == NULL || machine_name == NULL)
-                                {
-                                    async_utils::async_print("\t[CONNECTION MANAGER] Connection refused! Invalid user info!");
-                                    char refuse_buffer[1024] = "refused|invalid_identification";
-                                    send_data(refuse_buffer, sizeof(refuse_buffer), new_socket);
-                                    close(new_socket);
-                                }
-
-                                if(is_valid_username(username))
-                                {
-                                    bool client_flag = connection_stablished_callback(new_socket, username, machine_name);
-
-                                    close(new_socket);
-                                }
-                                else
-                                {
-                                    async_utils::async_print("\t[CONNECTION MANAGER] Connection refused! Invalid user info!");
-                                    char refuse_buffer[1024] = "refused|invalid_identification";
-                                    send_data(refuse_buffer, sizeof(refuse_buffer), new_socket);
-                                    close(new_socket);
-                                }
-
-        
+                                async_utils::async_print("\t[CONNECTION MANAGER] Connection refused! Invalid user info!");
+                                char refuse_buffer[1024] = "logout|invalid_identification";
+                                send_data(refuse_buffer, sizeof(refuse_buffer), new_socket);
+                                close(new_socket);
+                                return;
                             }
-                            //async_utils::async_print("\t[CONNECTION MANAGER] It sent us \"" + std::string(buffer) + "\" before closing...");
+                            
+                            if(is_valid_username(username))
+                            {
+                                try
+                                {
+                                    connection_stablished_callback(new_socket, username, machine_name);
+                                    async_utils::async_print("\t[CONNECTION MANAGER] User " + username + " joined with a new session on " + machine_name + "!");
+                                }
+                                catch(const std::exception& e)
+                                {
+                                    async_utils::async_print("\t[CONNECTION MANAGER] Could not stablish connection with user: " + std::string(e.what()));
+                                    close(new_socket);
+                                }
+                            }
+                            else
+                            {
+                                async_utils::async_print("\t[CONNECTION MANAGER] Connection refused! Invalid user info!");
+                                char refuse_buffer[1024] = "logout|invalid_identification";
+                                send_data(refuse_buffer, sizeof(refuse_buffer), new_socket);
+                                close(new_socket);
+                            }
                         }
                         catch(const std::exception& e)
                         {
-                            async_utils::async_print("\t[CONNECTION MANAGER] We got outselves a fucky wucky!" + std::string(e.what()));
+                            async_utils::async_print("\t[CONNECTION MANAGER] Exception occured while accepting connection: " + std::string(e.what()));
                             close(new_socket);
                         }
-                        
                     }
                 }
             }
             else if(result == 0)
             {
-                // timed out
+                // read timeout
+                // nothing happens, tries again on the next iteration
             }
             else
             {
-                // error using select
+                async_utils::async_print("\t[CONNECTION MANAGER] Select error!");
             }
         }
         async_utils::async_print("\t[CONNECTION MANAGER] Accept loop terminated!");
@@ -297,22 +297,22 @@ void Connection::send_data(char* buffer, std::size_t buffer_size, int sockfd, in
         socket = sockfd;
     }
 
-    timeval timeout;
-    timeout.tv_usec = 0;
+    timeval send_timeout;
+    send_timeout.tv_usec = 0;
     if(timeout == -1)
     {
-        timeout.tv_sec = timeout_;
+        send_timeout.tv_sec = timeout_;
     }
     else
     {
-        timeout.tv_sec = timeout;
+        send_timeout.tv_sec = timeout;
     }
 
     fd_set write_fds;
     FD_ZERO(&write_fds);
     FD_SET(socket, &write_fds);
 
-    int result = select(socket + 1, nullptr, &write_fds, nullptr, &timeout);
+    int result = select(socket + 1, nullptr, &write_fds, nullptr, &send_timeout);
     
     if(result == -1) 
     {
@@ -352,22 +352,22 @@ void Connection::recieve_data(char* buffer, std::size_t buffer_size, int sockfd,
         socket = sockfd;
     }
 
-    timeval timeout;
-    timeout.tv_usec = 0;
+    timeval recieve_timeout;
+    recieve_timeout.tv_usec = 0;
     if(timeout == -1)
     {
-        timeout.tv_sec = timeout_;
+        recieve_timeout.tv_sec = timeout_;
     }
     else
     {
-        timeout.tv_sec = timeout;
+        recieve_timeout.tv_sec = timeout;
     }
 
     fd_set read_fds;
     FD_ZERO(&read_fds);
     FD_SET(socket, &read_fds);
 
-    int result = select(socket + 1, &read_fds, nullptr, nullptr, &timeout);
+    int result = select(socket + 1, &read_fds, nullptr, nullptr, &recieve_timeout);
 
     if(result == -1) 
     {

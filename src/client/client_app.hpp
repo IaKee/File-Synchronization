@@ -9,6 +9,7 @@
 #include <string>
 #include <atomic>
 #include <cstdlib>
+#include <vector>
 
 // multithreading
 #include <atomic>
@@ -20,6 +21,7 @@
 #include "../include/common/cxxopts.hpp"
 
 // local
+#include "../include/common/inotify_watcher.hpp"
 #include "../include/common/lang.hpp"
 #include "../include/common/user_interface.hpp"
 #include "../include/common/connection.hpp"
@@ -50,6 +52,9 @@ namespace client_app
             // input
             user_interface::UserInterface UI_; 
 
+            inotify_watcher::InotifyWatcher inotify_;
+            
+
         public:
             Client(const std::string& u, const std::string& add, const int& p);
             ~Client();
@@ -59,7 +64,7 @@ namespace client_app
             std::mutex mutex_;
             std::condition_variable cv_;
             std::string command_buffer_;
-            std::list<std::string> sanitized_commands_;
+            std::vector<std::string> sanitized_commands_;
 
             void set_sync_dir(std::string new_directory);
             void process_input();

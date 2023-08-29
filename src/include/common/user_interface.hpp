@@ -26,7 +26,7 @@ namespace user_interface
                 std::mutex& mutex,
                 std::condition_variable& cv,
                 std::string& buff,
-                std::list<std::string>& sbuff);
+                std::vector<std::string>& sbuff);
             ~UserInterface();
             
             void start();

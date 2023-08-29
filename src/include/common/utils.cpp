@@ -1,17 +1,25 @@
-// c++
+// C++ Standard Libraries
 #include <cstdlib>
 #include <cstdio>
-#include <ctype.h>
 #include <ctime>
 #include <iostream>
 #include <regex>
 #include <string>
-#include <unistd.h>
+#include <list>
+#include <queue>
 #include <filesystem>
 #include <fstream>
-#include <queue>
+#include <sstream>
+#include <iomanip>
 #include <condition_variable>
+
+// C Standard Libraries
+#include <ctype.h>
+#include <unistd.h>
 #include <sys/select.h>
+
+// OpenSSL
+#include <openssl/md5.h>
 
 // locals
 #include "utils.hpp"
@@ -60,7 +68,7 @@ bool is_valid_path(std::string path)
 
 bool create_directory(const std::string& path) 
 {
-    return std::filesystem::create_directory(path);
+    return std::filesystem::create_directories(path);
 }
 
 bool create_file(const std::string& path)
@@ -73,6 +81,14 @@ bool create_file(const std::string& path)
         return true;
     }
     return false;
+}
+
+void delete_file(const std::string& file_path)
+{
+    if(std::remove(file_path.c_str()) != 0) 
+    {
+        throw std::runtime_error("Could not delete file!");
+    }
 }
 
 json get_json_contents(const std::string& path)
@@ -126,6 +142,48 @@ std::time_t get_time()
     return current_time;
 }
 
+std::string get_file_name(std::string& path)
+{
+    fs::path path_obj(path);
+    return path_obj.filename().string();
+}
+
+std::string calculate_md5_checksum(const std::string& file_path)
+{
+    unsigned char md5_digest[MD5_DIGEST_LENGTH];
+    MD5_CTX md5_ctx;
+    MD5_Init(&md5_ctx);
+
+    std::ifstream file(file_path, std::ios::binary);
+
+    if (!file.is_open()) {
+        throw std::runtime_error("Could not open the file.");
+    }
+
+    char buffer[1024];
+    while (file.read(buffer, sizeof(buffer))) {
+        MD5_Update(&md5_ctx, buffer, file.gcount());
+    }
+
+    file.close();
+    MD5_Final(md5_digest, &md5_ctx);
+
+    std::stringstream ss;
+    for (int i = 0; i < MD5_DIGEST_LENGTH; ++i) {
+        ss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(md5_digest[i]);
+    }
+
+    return ss.str();
+}
+
+void rename_replacing(std::string& old_path, std::string& new_path)
+{
+    if(!std::rename(old_path, new_path))
+    {
+        throw std::runtime_error("Could nome rename file " + old_path);
+    }
+}
+
 int get_folder_space(std::string folder_path, std::string param = "")
 {
     if (fs::exists(folder_path)) 
@@ -161,6 +219,23 @@ int get_folder_space(std::string folder_path, std::string param = "")
     {
         throw std::runtime_error("Given path does not exist!");
     }
+}
+
+std::list<std::string> split_buffer(const char* buffer) 
+{
+    std::list<std::string> tokens;
+    
+    const char* start_pos = buffer;
+    const char* end_pos = std::strchr(buffer, '|');
+    
+    while(end_pos != nullptr) 
+    {
+        tokens.push_back(std::string(start_pos, end_pos - start_pos));
+        start_pos = end_pos + 1;
+        end_pos = std::strchr(start_pos, '|');
+    }
+    tokens.push_back(std::string(start_pos));
+    return tokens;
 }
 
 //std::string async_utils::terminal_buffer = std::string("");

@@ -18,6 +18,7 @@
 #include "../include/common/user_interface.hpp"
 #include "../include/common/connection.hpp"
 #include "../include/common/utils.hpp"
+#include "../include/common/inotify_watcher.hpp"
 
 using namespace client_app;
 
@@ -28,7 +29,8 @@ Client::Client(const std::string& u, const std::string& add, const int& p)
         UI_(mutex_, cv_, command_buffer_, sanitized_commands_),
         connection_(),
         running_(true),
-        stop_requested_(false)
+        stop_requested_(false),
+        inotify_()
 {
     // initialization sequence
     std::string machine_name = get_machine_name();
@@ -69,7 +71,9 @@ Client::Client(const std::string& u, const std::string& add, const int& p)
     async_utils::async_print("\t[SYNCWIZARD CLIENT] " + CONNECTING_TO_SERVER);
     connection_.connect_to_server(server_address_, server_port_);
     
-    char buffer[1024] = "abuble";
+    std::string login_string = username_ + "|" + machine_name;
+    char buffer[1024];
+    strcpy(buffer, login_string.c_str());
     connection_.send_data(buffer, sizeof(buffer));
     
     // initializes user interface last
@@ -109,16 +113,35 @@ void Client::process_input()
         case 1:
             if(sanitized_commands_.front() == "exit")
             {
+                async_utils::async_print("\t[SYNCWIZARD CLIENT] Stop requested.");
                 stop();
                 break;
             }
-            
             async_utils::async_print("\t[SYNCWIZARD CLIENT] Could not find a valid command by \"" + command_buffer_ + "\"!");
             break;
         case 2:
-            // TODO: main commands goes here
+            if(sanitized_commands_[0] == "get" && sanitized_commands_[1] == "sync_dir")
+            {
+                //if(is_valid_path())
+                //create_directory()
+                break;
+            }
+            else
+            {
+                async_utils::async_print("\t[SYNCWIZARD CLIENT] Could not find a valid command by \"" + command_buffer_ + "\"!");
+                break;
+            }
             break;
-        
+        case 3:
+            if(sanitized_commands_[0] == "get" && sanitized_commands_[1] == "sync" && sanitized_commands_[2] == "dir")
+            {
+                break;
+            }
+            else
+            {
+                async_utils::async_print("\t[SYNCWIZARD CLIENT] Could not find a valid command by \"" + command_buffer_ + "\"!");
+                break;
+            }
         default:
             async_utils::async_print("\t[SYNCWIZARD CLIENT] Could not find a valid command by \"" + command_buffer_ + "\"!");
             break;
@@ -223,3 +246,4 @@ void Client::close()
     // closes remaining threads
     UI_.input_thread_.join();
 }
+

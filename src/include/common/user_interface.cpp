@@ -25,7 +25,7 @@ UserInterface::UserInterface(
     std::mutex& mutex,
     std::condition_variable& cv,
     std::string& buff,
-    std::list<std::string>& sbuff)
+    std::vector<std::string>& sbuff)
     :   max_fd_(0),
         input_descriptor_(STDIN_FILENO),
         running_(false),

@@ -4,6 +4,7 @@
 #include <thread>
 #include <exception>
 #include <stdexcept>
+#include <queue>
 
 // connection
 #include <sys/socket.h>
@@ -25,70 +26,26 @@ using namespace server;
 Server::Server()
 	:	S_UI_(ui_mutex, ui_cv, ui_buffer, ui_sanitized_buffer),
 		internet_manager(),
-		stop_requested_(false)
+		stop_requested_(false),
+		client_manager_(
+			std::bind(&connection::Connection::send_data, &internet_manager, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4), 
+			std::bind(&connection::Connection::recieve_data, &internet_manager, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4))
 {
 	
 	// init sequence
 	std::string machine_name = get_machine_name();
-	async_utils::async_print("[STARTUP] Initializing at " + machine_name + "...");
+	async_utils::async_print("\t[SYNCWIZARD SERVER] Initializing at " + machine_name + "...");
 
-	// settings init
-	async_utils::async_print("\t[SYNCWIZARD SERVER] Trying to restore settings from previous session...");
-
-	if(!is_valid_path(config_file_path_))
+	if(!is_valid_path(sync_dir_))
 	{
-		// first initialization
-		async_utils::async_print("\t[SYNCWIZARD SERVER] Could not load previous settings, restoring defaults...");
-		
-		if(!is_valid_path(config_dir_))
+		if(!create_directory(sync_dir_))
 		{
-			// if no config dir exists - creates it
-			if(!create_directory(config_dir_))
-			{
-				throw std::runtime_error("[SYNCWIZARD SERVER] Could not create settings folder! Please check system permissions!");
-			}
-			else
-			{
-				async_utils::async_print("\t[SYNCWIZARD SERVER] Config directory created!");
-			}
-		}
-
-		if(!create_file(config_file_path_))
-		{
-			throw std::runtime_error("[SYNCWIZARD SERVER] Could not create settings file! Please check system permissions!");
+			throw std::runtime_error("\t[SYNCWIZARD SERVER] Could not create sync_dir directory! Please check system permissions!");
 		}
 		else
 		{
-			async_utils::async_print("\t[SYNCWIZARD SERVER] Settings file created! Filling defaults...");
-			
-			// TODO: fill file with defaults here
-			save_data_["default_port"] = 65534;
-
-			save_json_to_file(save_data_, config_file_path_);
-			async_utils::async_print("\t[SYNCWIZARD SERVER] Defaults written to config file!");
+			async_utils::async_print("\t[SYNCWIZARD SERVER] Initializing server (root) files directory...");
 		}
-
-		if(!is_valid_path(sync_dir_))
-		{
-			if(!create_directory(sync_dir_))
-			{
-				throw std::runtime_error("[SYNCWIZARD SERVER] Could not create main sync_dir folder! Please check system permissions!");
-			}
-		}
-	}
-	
-	try
-	{
-		// try to read settings file
-		save_data_ = get_json_contents(config_file_path_);
-
-		// fill attributes with the data retrieved from the save file
-		default_port_ = save_data_["default_port"].get<int>();
-	}
-	catch(const std::exception& e)
-	{
-		async_utils::async_print("\t[SYNCWIZARD SERVER] Could not read settings file!");
-		throw std::runtime_error(e.what());
 	}
 	
 	internet_manager.create_socket();
@@ -118,7 +75,11 @@ void Server::start()
 	accept_th_ = std::thread(
 		[this]() 
 		{
-        	internet_manager.server_accept_loop();
+        	internet_manager.server_accept_loop(
+				[this](int new_socket, std::string username, std::string machine)
+				{
+					handle_new_session(new_socket, username, machine);
+				});
     	});
 
 	try
@@ -130,12 +91,10 @@ void Server::start()
 	}
 	catch(const std::exception& e)
 	{
-		async_utils::async_print("[SYNCWIZARD SERVER] Error occured on start(): " + std::string(e.what()));
-		throw std::runtime_error(e.what());
+		throw std::runtime_error("[SYNCWIZARD SERVER] Error occured on start(): " + std::string(e.what()));
 	}
 	catch(...)
 	{
-		async_utils::async_print("[SYNCWIZARD SERVER] Unknown error occured on start()!");
 		throw std::runtime_error("[SYNCWIZARD SERVER] Unknown error occured on start()!");
 	}
 }
@@ -186,9 +145,11 @@ void Server::handle_new_session(int new_socket, std::string username, std::strin
 		if(new_user == nullptr)
 		{
 			// session is from a new user, add to the list
+			async_utils::async_print("\t[SYNCWIZARD SERVER] loading user...");
 			client_manager_.load_user(username);
 
 			// tries to retrieve newly added user
+			async_utils::async_print("\t[SYNCWIZARD SERVER] checking loaded user...");
 			new_user = client_manager_.get_user(username);
 
 			if(new_user == nullptr)
@@ -198,125 +159,52 @@ void Server::handle_new_session(int new_socket, std::string username, std::strin
 		}
 		
 		// checks if there is already a session on the given socket
+		async_utils::async_print("\t[SYNCWIZARD SERVER] checking if session exists...");
 		client_connection::ClientSession* new_session = new_user->get_session(new_socket);
+
 		if(new_session == nullptr)
 		{	
+			async_utils::async_print("\t[SYNCWIZARD SERVER] creating new session...");
+			
 			// creates new session instance
-			client_connection::ClientSession created_session(
-				new_socket, 
-				username, 
-				machine,
-				internet_manager.send_data,
-				internet_manager.recieve_data,
-				new_user->broadcast,
-				new_user->remove_session)
-			new_session = new_user->add_session(new_socket, created_session);
+			std::unique_ptr<client_connection::ClientSession> created_session = 
+				std::make_unique<client_connection::ClientSession>(
+					new_socket,
+					username,
+					machine,
+					sync_dir_,
+					[this](char* buffer, std::size_t buffer_size, int socket_id, int flags) 
+					{
+						internet_manager.send_data(buffer, buffer_size, socket_id, flags);
+					},
+					[this](char* buffer, std::size_t buffer_size, int socket_id, int flags) 
+					{
+						internet_manager.recieve_data(buffer, buffer_size, socket_id, flags);
+					},
+					[new_user](char* buffer, std::size_t buffer_size) 
+					{
+						new_user->broadcast(buffer, buffer_size);
+					});
+			async_utils::async_print("\t[SYNCWIZARD SERVER] session created!");
 
-			// tries to retrieve newly added session
-			client_connection::ClientSession* new_session = new_user->get_session(new_socket);
-			if(new_session == nullptr)
-			{
-				throw std::runtime_error("[SYNCWIZARD SERVER] Session was wrongly or not added to the user manager!");
-			}
+			// adds new session to the user manager
+			new_user->add_session(created_session.release());
+			async_utils::async_print("\t[SYNCWIZARD SERVER] " + username + "(" + std::to_string(new_socket) + ") logged in!");
+		}
+		else
+		{
+			throw std::runtime_error("\t[SYNCWIZARD SERVER] Session already logged in?");
 		}
     }
     catch(const std::exception& e)
     {
-        async_utils::async_print("\t[SYNCWIZARD SERVER] Exception occurred while processing new session: \n\t\t" + e.what());
+		throw std::runtime_error("[SYNCWIZARD SERVER] Exception occurred while processing new session: \n\t\t" + std::string(e.what()));
     }
     catch(...)
     {
-        async_utils::async_print("\t[SYNCWIZARD SERVER] Unknown exception occurred while processing new session!");
+		throw std::runtime_error("[SYNCWIZARD SERVER] Unknown exception occurred while processing new session!");
     }
 }
-
-/*void Server::process_connections(int client_socket) 
-{
-	// process a newly recieved connection request with a client
-	char buffer[1024] = {0};
-	int bytes_read;
-
-	while((bytes_read = recv(clientSocket, buffer, sizeof(buffer), 0)) > 0) {
-		//Agora, apos receber a mensagem, trata o tipo de mensagem recebida (1o caractere da string para cada metodo)
-		// Handle the incoming message from the client
-		std::cout << "Received message from client: " << buffer << std::endl;
-
-		json jsonObject = json::parse(buffer);
-
-		// Access the JSON data as needed
-		std::string key1Value = jsonObject["function_type"];
-		std::string username = jsonObject["username"];
-
-		// Switch based on the first key
-		if (key1Value == "uploadFile") {
-			std::string fileContent = jsonObject["file_binary"];
-			std::string filename = jsonObject["filename"];
-
-			std::string filenamePath = sync_dir_ + "\\" + filename ;
-
-			std::ofstream outFile(filenamePath, std::ios::binary);
-			if (outFile) {
-				outFile.write(fileContent.c_str(), fileContent.size());
-				outFile.close();
-			} else {
-				std::cerr << "Error writing file" << std::endl;
-			}
-		} 
-		else if (key1Value == "deleteFile") 
-		{
-			std::string filename = jsonObject["filename"];
-			std::string filenamePath = sync_dir_ + "\\" + filename ;
-
-			if (std::remove(filenamePath.c_str()) == 0) 
-			{
-			std::cout << "Arquivo " << filename << " excluído com sucesso." << std::endl;
-			} 
-			else 
-			{
-			std::cerr << "Erro ao excluir o arquivo " << filename << "." << std::endl;
-			}
-			
-		} 
-		else if (key1Value == "downloadFile") 
-		{
-			std::string filename = jsonObject["filename"];
-			std::string filenamePath = sync_dir_ + "\\" + filename ;
-			std::ifstream file(filenamePath, std::ios::binary);
-			if (!file.is_open()) 
-			{
-				std::cerr << "Erro ao abrir o arquivo: " << filename << std::endl;
-				return;
-			}
-
-			file.seekg(0, std::ios::end);
-			int file_size = file.tellg();
-			file.seekg(0, std::ios::beg);
-
-			send(client_socket, &file_size, sizeof(file_size), 0);
-
-			// Enviar o conteúdo do arquivo para o cliente
-			char buffer[1024];
-			while (!file.eof()) 
-			{
-				file.read(buffer, sizeof(buffer));
-				send(clientSocket, buffer, file.gcount(), 0);
-			}
-			file.close();
-							
-		} 
-		else 
-		{
-			std::cerr << "Received unknown key: " << firstKey << std::endl;
-		}
-
-		// Use the extracted values
-		std::cout << "key1: " << key1Value << std::endl;
-		std::cout << "key2: " << key2Value << std::endl;
-		memset(buffer, 0, sizeof(buffer)); // Clear the buffer for the next message
-	}
-
-}*/
-
 
 void Server::process_input()
 {
@@ -338,12 +226,34 @@ void Server::process_input()
 				async_utils::async_print("\t[SYNCWIZARD SERVER] Could not find a command by \"" + ui_buffer + "\"!");
 			}
 			break;
+		case 2:
+			if(ui_sanitized_buffer.front() == "list")
+			{
+				if(ui_sanitized_buffer.back() == "clients")
+				{
+					std::list<std::string> connected = client_manager_.list_users();
+					std::string output = "\t[SYNCWIZARD SERVER] Currently these users are connected:";
+					for(std::string s : connected)
+					{
+						output += "\n\t\t-> " + s;
+					}
+					async_utils::async_print(output);
+				}
+				else
+				{
+					async_utils::async_print("\t[SYNCWIZARD SERVER] Could not find a command by \"" + ui_buffer + "\"!");
+				}
+			}
+			else
+			{
+				async_utils::async_print("\t[SYNCWIZARD SERVER] Could not find a command by \"" + ui_buffer + "\"!");
+			}
+			break;
 		default:
 			async_utils::async_print("\t[SYNCWIZARD SERVER] Could not find a command by \"" + ui_buffer + "\"!");
 			break;
 	}
 }
-
 
 void Server::main_loop()
 {
