@@ -5,15 +5,18 @@
 #include <string>
 #include <thread>
 #include <queue>
+#include <mutex>
+#include <condition_variable>
+#include <vector>
 
 // connection
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
-#include "../include/common/connection.hpp"
 
 // locals
 #include "client_connection.hpp"
+#include "../include/common/connection_manager.hpp"
 #include "../include/common/user_interface.hpp"
 #include "../include/common/utils.hpp"
 
@@ -28,7 +31,7 @@ namespace server
             std::mutex ui_mutex;
             std::condition_variable ui_cv;
             std::string ui_buffer;
-            std::list<std::string> ui_sanitized_buffer;
+            std::vector<std::string> ui_sanitized_buffer;
 
             // init & destroy
             Server();
@@ -41,26 +44,24 @@ namespace server
             void handle_new_session(int new_socket, std::string username, std::string machine);
             void process_input();
             void main_loop();
-
-        
-            // connection
-            connection::Connection internet_manager;
+ 
+            // modules
+            connection::ServerConnectionManager internet_manager;
         private:
             // runtime control
-            bool running_;
+            std::atomic<bool> running_;
             std::atomic<bool> stop_requested_;
 
+            // other attributes
             std::string client_default_path_;
-            std::thread accept_th_;
-
-            // interface
-            user_interface::UserInterface S_UI_;
-
-            // main settings
             std::string sync_dir_ = "./sync_dir_server";
             std::string default_port_;
 
-            // clients
+            // threads
+            std::thread accept_th_;
+
+            // modules
+            user_interface::UserInterface S_UI_;
             client_connection::UserGroup client_manager_;
     };
 }

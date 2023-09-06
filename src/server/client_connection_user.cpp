@@ -1,4 +1,5 @@
 // c++
+#include <iostream>
 #include <string>
 #include <chrono>
 #include <ctime>
@@ -28,8 +29,6 @@ User::User(
         user_dir_path_(home_dir + "/" + username),
         username_(username),
         overseer_running_(false),
-        overseer_started_(false),
-        overseer_stop_requested_(false),
         max_sessions_(max_sessions_default_)
 {
     // checks if user had a folder on the server
@@ -120,20 +119,51 @@ void User::nuke()
     }
 }
 
-void User::broadcast(char* buffer, std::size_t buffer_size)
+void User::broadcast_other_sessions(int caller_sockfd, packet& p)
 {
-    // sends a message to all user sessions
-    async_utils::async_print("[USER MANAGER] Broadcasting user " + username_);
+    // sends a message to another user sessions
+    // excluding the one that actually sent it
+
+    // this prints for every packet, remove for better performance
+    std::string output = "\t[USER MANAGER] Broadcasting packet on user " + username_;
+    output += " from session " + std::to_string(caller_sockfd) + ".";
+    async_utils::async_print(output);
 
     for(client_connection::ClientSession* session : sessions_)
     {
         try
         {
-            session->send(buffer, buffer_size);
+            // does not send back to the sender
+            if(session->get_socket_fd() != caller_sockfd)
+            {
+                session->add_packet_from_broadcast(p);
+            }
         }
         catch(const std::exception& e)
         {
-            throw std::runtime_error("[USER MANAGER] An exception happened while sending buffer to session:" + std::string(e.what()));
+            std::string output = "\t[USER MANAGER] An exception happened ";
+            output += "while sending buffer to session " + session->get_socket_fd();
+            output += "! Errors caught: " + std::string(e.what());
+            async_utils::async_print(output);
+        }     
+    }
+}
+
+void User::broadcast(packet& p)
+{
+    // sends a packet to all sessions
+    for(client_connection::ClientSession* session : sessions_)
+    {
+        try
+        {
+            session->add_packet_from_broadcast(p);
+        }
+        catch(const std::exception& e)
+        {
+            std::string output = "\t[USER MANAGER] An exception happened ";
+            output += "while sending buffer to session " + session->get_socket_fd();
+            output += "! Errors caught: " + std::string(e.what());
+            async_utils::async_print(output);
         }     
     }
 }
@@ -158,39 +188,45 @@ void User::start_overseer()
 {
     async_utils::async_print("\t[USER MANAGER] Initializing overseer for user \"" + username_ + "\"...");
     overseer_running_.store(true);
-    overseer_started_.store(true);
     overseer_th_ = std::thread(
         [this]()
         {
             overseer_loop();
         });
-    //inotifyWatcher_.startWatching();
 }
 
 void User::stop_overseer()
 {
     overseer_running_.store(false);
-    overseer_stop_requested_.store(true);
-    if(overseer_started_)
+    if(overseer_th_.joinable())
     {
         overseer_th_.join();
-    }
-    else
-    {
-        throw std::runtime_error("[USER MANAGER] Overseer stop requested without ever running!");
     }
 }
 
 void User::overseer_loop()
 {
-    while(overseer_running_.load())
+    while(overseer_running_.load() == true)
     {
-        sleep(1);
-        async_utils::async_print("\t[USER MANAGER] looping overseer for " + username_);
+        // every minute, checks if sessions are alive
+        std::this_thread::sleep_for(std::chrono::seconds(60));
+
+        for(client_connection::ClientSession* session : sessions_)
+        {
+      
+            std::chrono::high_resolution_clock::time_point now = std::chrono::high_resolution_clock::now();
+            std::chrono::minutes minutes_passed = std::chrono::duration_cast<std::chrono::minutes>(now - session->get_last_ping());
+
+            if(minutes_passed.count() > 5)
+            {
+                // 5 minutes passed, nukes session
+                session->disconnect("kicked due to inactivity");
+            }
+            else
+            {
+                // tries to ping session
+                session->send_ping();
+            }
+        }
     }
-}
-
-void handleFileEvent(){
-    async_utils::async_print("File event detected on client: " << event.filename);
-
 }

@@ -10,28 +10,29 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
-#include "../include/common/connection.hpp"
+#include "../include/common/connection_manager.hpp"
 
 // locals
 #include "client_connection.hpp"
-#include "../include/common/json.hpp"
 #include "../include/common/utils.hpp"
 #include "../include/common/user_interface.hpp"
 #include "server.hpp"
 
 // namespace
-using json = nlohmann::json;
 using namespace server;
 
 Server::Server()
-	:	S_UI_(ui_mutex, ui_cv, ui_buffer, ui_sanitized_buffer),
+	:	S_UI_(
+			&ui_mutex, 
+			&ui_cv, 
+			&ui_buffer, 
+			&ui_sanitized_buffer),
 		internet_manager(),
 		stop_requested_(false),
 		client_manager_(
-			std::bind(&connection::Connection::send_data, &internet_manager, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4), 
-			std::bind(&connection::Connection::recieve_data, &internet_manager, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4))
+			std::bind(&connection::ServerConnectionManager::send_packet, &internet_manager, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), 
+			std::bind(&connection::ServerConnectionManager::receive_packet, &internet_manager, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3))
 {
-	
 	// init sequence
 	std::string machine_name = get_machine_name();
 	async_utils::async_print("\t[SYNCWIZARD SERVER] Initializing at " + machine_name + "...");
@@ -70,8 +71,11 @@ Server::~Server()
 
 void Server::start()
 {
+	running_ = true;
+	stop_requested_.store(false);
+
 	// starts accept thread to recieve new connection requests
-	internet_manager.start_accepting_connections();
+	internet_manager.start_accept_loop();
 	accept_th_ = std::thread(
 		[this]() 
 		{
@@ -85,8 +89,6 @@ void Server::start()
 	try
 	{	
 		// begins application main loop
-		running_ = true;
-		stop_requested_.store(false);
 		main_loop();
 	}
 	catch(const std::exception& e)
@@ -107,12 +109,12 @@ void Server::stop()
 		async_utils::async_print("\t[SYNCWIZARD SERVER] Closing, please wait...");
 
 		stop_requested_.store(true);
-		running_ = false;
+		running_.store(false);
 		
 		S_UI_.stop();
 		ui_cv.notify_all();
 
-		internet_manager.stop_accepting_connections();
+		internet_manager.stop_accept_loop();
 		accept_th_.join();
 	}
 	catch(const std::exception& e)
@@ -158,43 +160,64 @@ void Server::handle_new_session(int new_socket, std::string username, std::strin
 			}
 		}
 		
-		// checks if there is already a session on the given socket
-		async_utils::async_print("\t[SYNCWIZARD SERVER] checking if session exists...");
-		client_connection::ClientSession* new_session = new_user->get_session(new_socket);
+		int active_sessions = new_user->get_active_session_count();
+		int session_limit = 2;
 
-		if(new_session == nullptr)
-		{	
-			async_utils::async_print("\t[SYNCWIZARD SERVER] creating new session...");
-			
-			// creates new session instance
-			std::unique_ptr<client_connection::ClientSession> created_session = 
-				std::make_unique<client_connection::ClientSession>(
-					new_socket,
-					username,
-					machine,
-					sync_dir_,
-					[this](char* buffer, std::size_t buffer_size, int socket_id, int flags) 
-					{
-						internet_manager.send_data(buffer, buffer_size, socket_id, flags);
-					},
-					[this](char* buffer, std::size_t buffer_size, int socket_id, int flags) 
-					{
-						internet_manager.recieve_data(buffer, buffer_size, socket_id, flags);
-					},
-					[new_user](char* buffer, std::size_t buffer_size) 
-					{
-						new_user->broadcast(buffer, buffer_size);
-					});
-			async_utils::async_print("\t[SYNCWIZARD SERVER] session created!");
+		if(active_sessions < session_limit)
+		{
+			// checks if there is already a session on the given socket
+			async_utils::async_print("\t[SYNCWIZARD SERVER] checking if session exists...");
+			client_connection::ClientSession* new_session = new_user->get_session(new_socket);
 
-			// adds new session to the user manager
-			new_user->add_session(created_session.release());
-			async_utils::async_print("\t[SYNCWIZARD SERVER] " + username + "(" + std::to_string(new_socket) + ") logged in!");
+			if(new_session == nullptr)
+			{	
+				async_utils::async_print("\t[SYNCWIZARD SERVER] creating new session...");
+				
+				// creates new session instance
+				std::unique_ptr<client_connection::ClientSession> created_session = 
+					std::make_unique<client_connection::ClientSession>(
+						new_socket,
+						username,
+						machine,
+						sync_dir_,
+						[this](const packet& p, int sockfd = -1, int timeout = -1) 
+						{
+							internet_manager.send_packet(p, sockfd, timeout);
+						},
+						[this](packet& p, int sockfd = -1, int timeout = -1) 
+						{
+							internet_manager.receive_packet(p, sockfd, timeout);
+						},
+						[new_user](int caller_sockfd, packet& p) 
+						{
+							new_user->broadcast_other_sessions(caller_sockfd, p);
+						});
+
+				std::string output = "\t[SYNCWIZARD SERVER] " + created_session->get_identifier();
+				output += " session added! Force starting synchronization protocol.";
+
+				// hack to force start the synchronization
+            	packet sync_packet;
+            	std::string command = "clist";
+            	strcharray(command, sync_packet.command, sizeof(sync_packet.command));
+				created_session->add_packet_from_broadcast(sync_packet);
+				
+				// adds new session to the user manager
+				new_user->add_session(created_session.release());
+				
+				output = "\t[SYNCWIZARD SERVER] " + created_session->get_identifier();
+				output += " logged in!";
+			}
+			else
+			{
+				throw std::runtime_error("\t[SYNCWIZARD SERVER] Session already logged in?");
+			}
 		}
 		else
 		{
-			throw std::runtime_error("\t[SYNCWIZARD SERVER] Session already logged in?");
+			throw std::runtime_error("[SYNCWIZARD SERVER] User already has 2 sessions connected!");
 		}
+		
     }
     catch(const std::exception& e)
     {

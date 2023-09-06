@@ -11,9 +11,12 @@
 #include <atomic>
 #include <mutex>
 #include <condition_variable>
+#include <shared_mutex>
 
 // locals
-#include "../include/common/InotifyWatcher.hpp"
+#include "../include/common/utils_packet.hpp"
+
+using namespace utils_packet;
 
 namespace client_connection
 {
@@ -26,9 +29,9 @@ namespace client_connection
                 std::string username, 
                 std::string machine_name,
                 std::string directory_path,
-                std::function<void(char* buffer, std::size_t buffer_size, int sock_fd, int timeout)> send_callback,
-                std::function<void(char* buffer, std::size_t buffer_size, int sock_fd, int timeout)> recieve_callback,
-                std::function<void(char* buffer, std::size_t buffer_size)> broadcast_user_callback);
+                std::function<void(const packet& p, int sockfd, int timeout)> send_callback_,
+                std::function<void(packet& p, int sockfd, int timeout)> receive_callback_,
+                std::function<void(int caller_sockfd, packet& p)> broadcast_user_callback);
             
             ~ClientSession();
 
@@ -37,18 +40,14 @@ namespace client_connection
             std::string get_username();
             std::string get_address();
             std::string get_machine_name();
+            std::string get_identifier();
+            std::chrono::high_resolution_clock::time_point get_last_ping();
 
             // network
-            void send(char* buffer, std::size_t buffer_size, int timeout = -1);
-            void recieve(char* buffer, std::size_t buffer_size, int timeout = -1);
             void send_ping();
             void disconnect(std::string reason = "");
+            void add_packet_from_broadcast(packet& p);
 
-            // main handler
-            void start_handler();
-            void stop_handler();
-            void session_handler_loop();
-            
             // recieve handler
             void start_receiver();
             void stop_receiver();
@@ -66,50 +65,68 @@ namespace client_connection
             std::string machine_;
             std::string directory_path_;
 
-            // multithread & synchronization
+            // internal buffers
+            std::vector<packet> sender_buffer_;
+            std::vector<packet> receiver_buffer_;
+            std::unordered_map<std::string, std::shared_ptr<std::shared_mutex>> file_mtx_;
+
+            // runtime control
             std::atomic<bool> initializing_;
-
-            std::mutex send_mtx_;
-            std::condition_variable send_cv_;
             std::atomic<bool> running_sender_;
-            std::thread sender_th_;
-            std::list<std::pair<char*, std::size_t>> sender_buffer_;
-
             std::atomic<bool> running_receiver_;
-            std::thread receiver_th_;
-            std::mutex recieve_mtx_;
-            std::size_t expected_buffer_size = 1024;
-            std::list<std::pair<char*, std::size_t>> receiver_buffer_;
-            const char EOF_MARKER = 0xFF;
 
-            // other
-            std::atomic<int> timeout_sec = 5;
+            // mutexes
+            std::mutex send_mtx_;
+            std::mutex recieve_mtx_;
+
+            // condition variable
+            std::condition_variable send_cv_;
+
+            // threads
+            std::thread sender_th_;
+            std::thread receiver_th_;
+
+            // timing
             std::chrono::high_resolution_clock::time_point ping_start_;
             std::chrono::high_resolution_clock::time_point last_ping_;
             
             // callbacks
-            std::function<void(char* buffer, std::size_t buffer_size, int sock_fd, int timeout)> send_callback_;
-            std::function<void(char* buffer, std::size_t buffer_size, int sock_fd, int timeout)> recieve_callback_;
-            std::function<void(char* buffer, std::size_t buffer_size)> broadcast_user_callback_;
+            std::function<void(const packet& p, int sockfd, int timeout)> send_callback_;
+            std::function<void(packet& p, int sockfd, int timeout)> receive_callback_;
+            std::function<void(int caller_sockfd, packet& p)> broadcast_user_callback_;
             std::function<int()> get_user_count_callback_;
+            
+            // main commands
+            void malformed_command_(std::string command);
+            void client_requested_logout_();
+            void client_requested_ping_();
+            void client_responded_ping_();
+            void client_requested_delete_(std::string args, packet buffer, std::string arg2 = "");
+            void client_requested_slist_();
+            void client_requested_flist_();
+            void client_requested_adownload_(std::string args);
+            void client_sent_clist_(packet buffer, std::string args = "");
+            void client_sent_sdownload_(std::string args, packet buffer, std::string arg2 = "");
+            void client_sent_supload_(std::string args, std::string arg2);
+            std::string slist_();
+            void receive_packet_(packet& p, int sockfd = -1, int timeout = -1);
+            void send_packet_(const packet& p, int sockfd = -1, int timeout = -1);
     };
     
     class User
     {
         private:
-            // constants
+            // identifiers
+            std::string username_;
+
+            // other attributes
             std::string home_dir_path_;
             std::string user_dir_path_;
 
-            // identifiers
-            std::string username_;
-            
-            // multithread & synchronization
+            // threads
             std::thread overseer_th_;
-            int max_timeout_;
+
             std::atomic<bool> overseer_running_;
-            std::atomic<bool> overseer_started_;
-            std::atomic<bool> overseer_stop_requested_;
             std::mutex broadcast_mtx_;
 
             // user attributes
@@ -129,7 +146,8 @@ namespace client_connection
             void remove_session(int sock_fd, std::string reason = "");
             ClientSession* get_session(int sock_fd);
             void nuke();  // disconnect all sessions
-            void broadcast(char* buffer, std::size_t buffer_size);
+            void broadcast_other_sessions(int caller_sockfd, packet& p);
+            void broadcast(packet& p);
 
             // other
             bool has_current_files();
@@ -140,22 +158,21 @@ namespace client_connection
             void start_overseer();
             void stop_overseer();
             void overseer_loop();
-            void handleFileEvent();
     };
 
     class UserGroup
     {
         public:
             UserGroup(
-                std::function<void(char* buffer, std::size_t buffer_size, int sock_fd, int timeout)> send_callback,
-                std::function<void(char* buffer, std::size_t buffer_size, int sock_fd, int timeout)> recieve_callback);
+                std::function<void(const packet& p, int sockfd, int timeout)> send_callback,
+                std::function<void(packet& p, int sockfd, int timeout)> receive_callback);
 
             // group control
             std::list<std::string> list_users();
             User* get_user(std::string username);
             void load_user(std::string username);
             void unload_user(std::string username);
-            void global_broadcast(char* buffer, std::size_t buffer_size);
+            void global_broadcast(packet& p);
 
             int get_active_users_count();
 
@@ -164,8 +181,8 @@ namespace client_connection
             std::string sync_dir_ = "./sync_dir_server";
 
             // callbacks
-            std::function<void(char* buffer, std::size_t buffer_size, int sock_fd, int timeout)> send_callback_;
-            std::function<void(char* buffer, std::size_t buffer_size, int sock_fd, int timeout)> recieve_callback_;
+            std::function<void(const packet& p, int sockfd, int timeout)> send_callback_;
+            std::function<void(packet& p, int sockfd, int timeout)> receive_callback_;
             
             std::vector<User*> users_;
     };

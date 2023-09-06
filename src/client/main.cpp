@@ -1,6 +1,10 @@
 // c++
 #include <iostream>
 #include <csignal>
+#include <stdexcept>
+#include <exception>
+
+// standard c
 #include <termios.h>
 #include <unistd.h>
 
@@ -22,16 +26,13 @@ void cleanup(int signal)
 int main(int argc, char* argv[]) 
 {
     // saves current terminal mode
-	std::cout << "Saving terminal current mode..." << std::endl;
+	std::cout << "[MAIN][CLEANUP] Saving terminal current mode..." << std::endl;
     tcgetattr(STDIN_FILENO, &old_settings);
-
-	std::cout << "Setting terminal to raw mode..." << std::endl;
+	std::cout << "[MAIN][CLEANUP] Setting terminal to raw mode..." << std::endl;
     new_settings = old_settings;
     new_settings.c_lflag &= ~(ICANON | ECHO);
     tcsetattr(STDIN_FILENO, TCSANOW, &new_settings);
-
 	std::signal(SIGINT, cleanup);
-
 	async_utils::start_capture();
 
     // main attributes
@@ -91,7 +92,8 @@ int main(int argc, char* argv[])
         // help command-line option
         if(show_help)
         {
-            std::cout << "\t" << options.help() << std::endl;
+            std::cout << "\t[MAIN] " << options.help() << std::endl;
+            cleanup(0);
             return 0;
         }
 
@@ -103,9 +105,11 @@ int main(int argc, char* argv[])
             
             if(argc < 4)
             {
-                std::cout << "\t[CLIENT] " + ERROR_PARSING_MISSING << std::endl;
-                std::cout << "\t[CLIENT] " + CLIENT_USAGE_LAYOUT << std::endl;
-                std::cout << "\t[CLIENT] " + RUN_INFO << std::endl;
+                std::cout << "\t[MAIN] " + ERROR_PARSING_MISSING << std::endl;
+                std::cout << "\t[MAIN] " + CLIENT_USAGE_LAYOUT << std::endl;
+                std::cout << "\t[MAIN] " + RUN_INFO << std::endl;
+
+                cleanup(0);
                 return -1;
             }
 
@@ -123,7 +127,8 @@ int main(int argc, char* argv[])
     } 
     catch (std::exception& e) 
     {
-        std::cerr << "\t[CLIENT] " + ERROR_PARSING_CRITICAL << e.what() << std::endl;
+        std::cerr << "\t[MAIN] " + ERROR_PARSING_CRITICAL << e.what() << std::endl;
+        cleanup(0);
         return -1;
     }
     
@@ -134,7 +139,9 @@ int main(int argc, char* argv[])
     }
     catch(const std::exception& e)
     {
-        std::cerr << "\nException captured on main(): " << e.what() << std::endl;
+        std::cerr << "\n[MAIN] Critical error:\n\t\t" << e.what() << std::endl;
+        cleanup(0);
+        return -1;
     }
     
     cleanup(0);

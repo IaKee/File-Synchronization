@@ -12,6 +12,7 @@
 #include <sstream>
 #include <iomanip>
 #include <condition_variable>
+#include <vector>
 
 // C Standard Libraries
 #include <ctype.h>
@@ -95,6 +96,33 @@ void delete_file(const std::string& file_path)
     }
 }
 
+const char* strchar(std::string& i)
+{
+    return i.c_str();
+}
+
+void strcharray(std::string input_string, char* output_char_array, size_t max_size) 
+{
+    if(input_string.size() > (max_size - 1))
+    {
+        throw std::runtime_error("[UTILS] Given string \"" + input_string + "\" exceeds vector maximum size!");
+    }
+
+    size_t copied_size = std::min(input_string.size(), max_size - 1);
+    strncpy(output_char_array, input_string.c_str(), copied_size);
+
+    // fills the remaining of the array with null characters
+    for (size_t i = copied_size; i < max_size; ++i) 
+    {
+        output_char_array[i] = '\0';
+    }
+}
+
+std::string charraystr(char* char_array, size_t size)
+{
+    return std::string(char_array, size);
+}
+
 json get_json_contents(const std::string& path)
 {
     // returns contents from json file
@@ -161,6 +189,35 @@ std::string calculate_md5_checksum(const std::string& filepath)
         new CryptoPP::HashFilter(md5, new CryptoPP::HexEncoder(new CryptoPP::StringSink(digest))));
 
     return digest;
+}
+
+std::vector<std::vector<char>> bufferize_file(std::string file_path, std::size_t buffer_size)
+{
+    std::ifstream file(file_path, std::ios::binary);
+    
+    if(!file.is_open()) 
+    {
+        throw std::runtime_error("[UTILS] Could not acess file to bufferize: " + file_path);
+    }
+
+    std::vector<std::vector<char>> buffers;
+
+    // bufferize file
+    while(!file.eof()) 
+    {
+        std::vector<char> buffer(buffer_size);
+        file.read(buffer.data(), buffer_size);
+        std::streamsize bytes_read = file.gcount();
+
+        if(bytes_read > 0) 
+        {
+            buffer.resize(static_cast<std::size_t>(bytes_read));
+            buffers.push_back(buffer);
+        }
+    }
+
+    file.close();
+    return buffers;
 }
 
 void rename_replacing(std::string& old_path, std::string& new_path)

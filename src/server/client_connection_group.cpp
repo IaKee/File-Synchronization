@@ -14,10 +14,10 @@ using namespace client_connection;
 using json = nlohmann::json;
 
 UserGroup::UserGroup(
-    std::function<void(char* buffer, std::size_t buffer_size, int sock_fd, int timeout)> send_callback,
-    std::function<void(char* buffer, std::size_t buffer_size, int sock_fd, int timeout)> recieve_callback)
+    std::function<void(const packet& p, int sockfd, int timeout)> send_callback,
+    std::function<void(packet& p, int sockfd, int timeout)> receive_callback)
     :   send_callback_(send_callback),
-        recieve_callback_(recieve_callback)
+        receive_callback_(receive_callback)
 {
     //
 }
@@ -79,11 +79,11 @@ void UserGroup::unload_user(std::string username)
     }
 }
 
-void UserGroup::global_broadcast(char* buffer, std::size_t buffer_size)
+void UserGroup::global_broadcast(packet& p)
 {
     for(client_connection::User* user : users_)
     {
-        user->broadcast(buffer, buffer_size);
+        user->broadcast(p);
     }
 }
 
