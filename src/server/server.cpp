@@ -52,7 +52,16 @@ Server::Server()
 	internet_manager.create_socket();
 
 	// set defaut port
-	internet_manager.set_port(65534);
+	int new_port = 65535 + 1;
+	bool port_avaiable = false;
+
+	// chooses a port that is avaiable by testing them
+	while(port_avaiable == false && new_port < 50000)
+	{
+		new_port--;
+		port_avaiable = internet_manager.is_port_available(new_port);
+	}
+	internet_manager.set_port(new_port);
 
 	internet_manager.create_server();
 
@@ -93,7 +102,7 @@ void Server::start()
 	}
 	catch(const std::exception& e)
 	{
-		throw std::runtime_error("[SYNCWIZARD SERVER] Error occured on start(): " + std::string(e.what()));
+		throw std::runtime_error("[SYNCWIZARD SERVER] Error occured on start():\n\t" + std::string(e.what()));
 	}
 	catch(...)
 	{

@@ -42,7 +42,7 @@ int main()
 	}
 	catch(const std::exception& e)
     {
-        async_utils::async_print("[MAIN] Exception captured: " + std::string(e.what()));
+        async_utils::async_print("[MAIN] Exception captured:\n\t" + std::string(e.what()));
     }
 	catch(...)
 	{

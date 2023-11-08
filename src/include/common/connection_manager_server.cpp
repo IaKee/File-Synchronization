@@ -35,7 +35,6 @@ void ServerConnectionManager::create_server()
     server_address.sin_addr.s_addr = htonl(INADDR_ANY);
     server_address.sin_port = htons(this->get_port());
 
-
     if(bind(
         this->get_sock_fd(), 
         (struct sockaddr *)&server_address, 
