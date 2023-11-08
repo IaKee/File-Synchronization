@@ -3,10 +3,12 @@
 
 // local includes
 #include "connection_manager.hpp"
+#include "async_cout.hpp"
 #include "utils.hpp"
 #include "utils_packet.hpp"
 
 using namespace connection;
+using namespace async_cout;
 
 ServerConnectionManager::ServerConnectionManager()
 {
@@ -26,7 +28,7 @@ ServerConnectionManager::~ServerConnectionManager()
 
 void ServerConnectionManager::create_server() 
 {
-    async_utils::async_print("\t[SERVER CONNECTION MANAGER] Creating server...");
+    aprint("\t[SERVER CONNECTION MANAGER] Creating server...");
     
     // sets socket to passive and listens on given port
     struct sockaddr_in server_address;
@@ -57,7 +59,7 @@ void ServerConnectionManager::create_server()
 
 void ServerConnectionManager::start_accept_loop()
 {
-    async_utils::async_print("\t[SERVER CONNECTION MANAGER] Enabling accept flag...");
+    aprint("\t[SERVER CONNECTION MANAGER] Enabling accept flag...");
     // starts accept loop on another thread
     if(running_accept_.load() == false)
     {
@@ -65,13 +67,13 @@ void ServerConnectionManager::start_accept_loop()
     }
     else
     {
-        async_utils::async_print("\t[SERVER CONNECTION MANAGER] Tried to start accept loop which is already running!");
+        aprint("\t[SERVER CONNECTION MANAGER] Tried to start accept loop which is already running!");
     }
 }
 
 void ServerConnectionManager::stop_accept_loop()
 {
-    async_utils::async_print("\t[SERVER CONNECTION MANAGER] Disabling accept flag...");
+    aprint("\t[SERVER CONNECTION MANAGER] Disabling accept flag...");
     
     // breaks accepting loop
     if(running_accept_.load() == true)
@@ -80,14 +82,14 @@ void ServerConnectionManager::stop_accept_loop()
     }
     else
     {
-        async_utils::async_print("\t[SERVER CONNECTION MANAGER] Tried to stop accept loop without ever running!");
+        aprint("\t[SERVER CONNECTION MANAGER] Tried to stop accept loop without ever running!");
     }
 }
 
 void ServerConnectionManager::server_accept_loop(
     std::function<void(int, std::string, std::string)> connection_stablished_callback) 
 {
-    async_utils::async_print("\t[SERVER CONNECTION MANAGER] Starting server accept loop...");
+    aprint("\t[SERVER CONNECTION MANAGER] Starting server accept loop...");
 
     try
     {
@@ -117,7 +119,7 @@ void ServerConnectionManager::server_accept_loop(
                     
                     if(new_socket >= 0) 
                     {
-                        async_utils::async_print("\t[SERVER CONNECTION MANAGER] Got a new connection request...");
+                        aprint("\t[SERVER CONNECTION MANAGER] Got a new connection request...");
                         
                         // connection stablished, tries to recieve identification from the new user
                         try
@@ -145,7 +147,7 @@ void ServerConnectionManager::server_accept_loop(
 
                                 std::string output = "\t[SERVER CONNECTION MANAGER] Connection refused!";
                                 output += " Invalid argument number!";
-                                async_utils::async_print(output);
+                                aprint(output);
 
                                 close(new_socket);
 
@@ -166,7 +168,7 @@ void ServerConnectionManager::server_accept_loop(
 
                                     std::string output = "\t[SERVER CONNECTION MANAGER] User " + username;
                                     output += " joined with a new session on " + machine_name + "!";
-                                    async_utils::async_print(output);
+                                    aprint(output);
                                     
                                     packet approval_packet;
                                     std::string command_response = "login|ok|" + new_socket;
@@ -184,9 +186,9 @@ void ServerConnectionManager::server_accept_loop(
                                 }
                                 catch(const std::exception& e)
                                 {
-                                    std::string output = "\t[CONNECTION MANAGER] Could not stablish connection with user: ";
+                                    std::string output = "\t[SERVER CONNECTION MANAGER] Could not stablish connection with user: ";
                                     output += std::string(e.what());
-                                    async_utils::async_print(output);
+                                    aprint(output);
 
                                     packet refusal_packet;
                                     std::string command_response = "login|fail";
@@ -204,9 +206,9 @@ void ServerConnectionManager::server_accept_loop(
                             }
                             else
                             {
-                                std::string output = "\t[CONNECTION MANAGER] Could not stablish connection with user: ";
+                                std::string output = "\t[SERVER CONNECTION MANAGER] Could not stablish connection with user: ";
                                 output += "Invalid user info!";
-                                async_utils::async_print(output);
+                                aprint(output);
 
                                 packet refusal_packet;
                                 std::string command_response = "login|fail";
@@ -226,7 +228,7 @@ void ServerConnectionManager::server_accept_loop(
                         {
                             std::string output = "\t[SERVER CONNECTION MANAGER] Exception occured while accepting connection: ";
                             output += "\n\t\t" + std::string(e.what());
-                            async_utils::async_print(output);
+                            aprint(output);
 
                             try
                             {
@@ -234,7 +236,7 @@ void ServerConnectionManager::server_accept_loop(
                             }
                             catch(const std::exception& e)
                             {
-                                async_utils::async_print("\t[SERVER CONNECTION MANAGER] Could not refuse connection. Its gone!");
+                                aprint("\t[SERVER CONNECTION MANAGER] Could not refuse connection. Its gone!");
                             }
                             
                             // goes to the next loop iteraction
@@ -250,16 +252,16 @@ void ServerConnectionManager::server_accept_loop(
             }
             else
             {
-                async_utils::async_print("\t[SERVER CONNECTION MANAGER] Select reading error!");
+                aprint("\t[SERVER CONNECTION MANAGER] Select reading error!");
             }
         }
-        async_utils::async_print("\t[SERVER CONNECTION MANAGER] Accept loop terminated.");
+        aprint("\t[SERVER CONNECTION MANAGER] Accept loop terminated.");
     }
     catch(const std::exception& e)
     {
         std::string output = "\t[SERVER CONNECTION MANAGER] Error occured on server accept loop:";
         output += "\n\t\t" + std::string(e.what());
-        async_utils::async_print(output);
+        aprint(output);
         throw std::runtime_error(e.what());
     }
     catch(...)

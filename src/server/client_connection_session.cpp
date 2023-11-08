@@ -22,7 +22,9 @@
 // locals
 #include "client_connection.hpp"
 #include "../include/common/utils.hpp"
+#include "../include/common/async_cout.hpp"
 
+using namespace async_cout;
 using namespace client_connection;
 namespace fs = std::filesystem;
 
@@ -45,10 +47,10 @@ ClientSession::ClientSession(
         running_sender_(false),
         initializing_(true)
 {
-    async_utils::async_print("\t[SESSION MANAGER] Starting up new session for user " + username_ + "(" + std::to_string(socket_fd_) + ")");
+    aprint("\t[SESSION MANAGER] Starting up new session for user " + username_ + "(" + std::to_string(socket_fd_) + ")");
     start_sender();
     start_receiver();
-    async_utils::async_print("\t[SESSION MANAGER] Started!");
+    aprint("\t[SESSION MANAGER] Started!");
 }
 
 ClientSession::~ClientSession()

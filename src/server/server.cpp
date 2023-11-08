@@ -15,11 +15,13 @@
 // locals
 #include "client_connection.hpp"
 #include "../include/common/utils.hpp"
+#include "../include/common/async_cout.hpp"
 #include "../include/common/user_interface.hpp"
 #include "server.hpp"
 
 // namespace
 using namespace server;
+using namespace async_cout;
 
 Server::Server()
 	:	S_UI_(
@@ -35,7 +37,7 @@ Server::Server()
 {
 	// init sequence
 	std::string machine_name = get_machine_name();
-	async_utils::async_print("\t[SYNCWIZARD SERVER] Initializing at " + machine_name + "...");
+	aprint("\t[SYNCWIZARD SERVER] Initializing at " + machine_name + "...");
 
 	if(!is_valid_path(sync_dir_))
 	{
@@ -45,7 +47,7 @@ Server::Server()
 		}
 		else
 		{
-			async_utils::async_print("\t[SYNCWIZARD SERVER] Initializing server (root) files directory...");
+			aprint("\t[SYNCWIZARD SERVER] Initializing server (root) files directory...");
 		}
 	}
 	
@@ -58,7 +60,7 @@ Server::Server()
 
 	std::string addr = internet_manager.get_address();
 	int port = internet_manager.get_port();
-	async_utils::async_print("[STARTUP] Server running at " + addr + ":" + 
+	aprint("[STARTUP] Server running at " + addr + ":" + 
 		std::to_string(port) + "(" + std::to_string(internet_manager.get_sock_fd()) + ")");
 	
 	S_UI_.start();
@@ -106,7 +108,7 @@ void Server::stop()
 	// stop user interface and command processing
 	try
 	{
-		async_utils::async_print("\t[SYNCWIZARD SERVER] Closing, please wait...");
+		aprint("\t[SYNCWIZARD SERVER] Closing, please wait...");
 
 		stop_requested_.store(true);
 		running_.store(false);
@@ -119,16 +121,16 @@ void Server::stop()
 	}
 	catch(const std::exception& e)
 	{
-		async_utils::async_print("\t[SYNCWIZARD SERVER] Error occured on stop(): " + std::string(e.what()));
+		aprint("\t[SYNCWIZARD SERVER] Error occured on stop(): " + std::string(e.what()));
 		throw std::runtime_error(e.what());
 	}
 	catch(...)
 	{
-		async_utils::async_print("\t[SYNCWIZARD SERVER] Unknown error occured on stop()!");
+		aprint("\t[SYNCWIZARD SERVER] Unknown error occured on stop()!");
 		throw std::runtime_error("Unknown error occured on stop()!");
 	}
 
-	async_utils::async_print("\t[SYNCWIZARD SERVER] Main components closed!");
+	aprint("\t[SYNCWIZARD SERVER] Main components closed!");
 }
 
 void Server::close()
@@ -147,11 +149,11 @@ void Server::handle_new_session(int new_socket, std::string username, std::strin
 		if(new_user == nullptr)
 		{
 			// session is from a new user, add to the list
-			async_utils::async_print("\t[SYNCWIZARD SERVER] loading user...");
+			aprint("\t[SYNCWIZARD SERVER] loading user...");
 			client_manager_.load_user(username);
 
 			// tries to retrieve newly added user
-			async_utils::async_print("\t[SYNCWIZARD SERVER] checking loaded user...");
+			aprint("\t[SYNCWIZARD SERVER] checking loaded user...");
 			new_user = client_manager_.get_user(username);
 
 			if(new_user == nullptr)
@@ -166,12 +168,12 @@ void Server::handle_new_session(int new_socket, std::string username, std::strin
 		if(active_sessions < session_limit)
 		{
 			// checks if there is already a session on the given socket
-			async_utils::async_print("\t[SYNCWIZARD SERVER] checking if session exists...");
+			aprint("\t[SYNCWIZARD SERVER] checking if session exists...");
 			client_connection::ClientSession* new_session = new_user->get_session(new_socket);
 
 			if(new_session == nullptr)
 			{	
-				async_utils::async_print("\t[SYNCWIZARD SERVER] creating new session...");
+				aprint("\t[SYNCWIZARD SERVER] creating new session...");
 				
 				// creates new session instance
 				std::unique_ptr<client_connection::ClientSession> created_session = 
@@ -246,7 +248,7 @@ void Server::process_input()
 			}
 			else
 			{
-				async_utils::async_print("\t[SYNCWIZARD SERVER] Could not find a command by \"" + ui_buffer + "\"!");
+				aprint("\t[SYNCWIZARD SERVER] Could not find a command by \"" + ui_buffer + "\"!");
 			}
 			break;
 		case 2:
@@ -260,27 +262,27 @@ void Server::process_input()
 					{
 						output += "\n\t\t-> " + s;
 					}
-					async_utils::async_print(output);
+					aprint(output);
 				}
 				else
 				{
-					async_utils::async_print("\t[SYNCWIZARD SERVER] Could not find a command by \"" + ui_buffer + "\"!");
+					aprint("\t[SYNCWIZARD SERVER] Could not find a command by \"" + ui_buffer + "\"!");
 				}
 			}
 			else
 			{
-				async_utils::async_print("\t[SYNCWIZARD SERVER] Could not find a command by \"" + ui_buffer + "\"!");
+				aprint("\t[SYNCWIZARD SERVER] Could not find a command by \"" + ui_buffer + "\"!");
 			}
 			break;
 		default:
-			async_utils::async_print("\t[SYNCWIZARD SERVER] Could not find a command by \"" + ui_buffer + "\"!");
+			aprint("\t[SYNCWIZARD SERVER] Could not find a command by \"" + ui_buffer + "\"!");
 			break;
 	}
 }
 
 void Server::main_loop()
 {
-	async_utils::async_print("\t[SYNCWIZARD SERVER] Starting up server main loop...");
+	aprint("\t[SYNCWIZARD SERVER] Starting up server main loop...");
 	try
 	{
 		while(running_)
@@ -288,7 +290,7 @@ void Server::main_loop()
 			{
 				// inserts prompt prefix before que actual user command
 				std::lock_guard<std::mutex> lock(ui_mutex);
-				//async_utils::async_print("\t#> ", false);
+				//aprint("\t#> ", false);
 			}   
 
 			{
@@ -301,7 +303,7 @@ void Server::main_loop()
 			if(stop_requested_.load() == true)
 			{
 				ui_cv.notify_one();
-				async_utils::async_print("\t[SYNCWIZARD SERVER] Main loop terminated!");
+				aprint("\t[SYNCWIZARD SERVER] Main loop terminated!");
 				return;
 			}
 			
@@ -315,16 +317,16 @@ void Server::main_loop()
 			ui_cv.notify_one();
 			
 		}
-		async_utils::async_print("\t[SYNCWIZARD SERVER] Main loop terminated!");
+		aprint("\t[SYNCWIZARD SERVER] Main loop terminated!");
 	}
 	catch (const std::exception& e)
 	{
-		async_utils::async_print("\t[SYNCWIZARD SERVER] Error occured on main_loop(): ");
+		aprint("\t[SYNCWIZARD SERVER] Error occured on main_loop(): ");
 		throw std::runtime_error(e.what());
 	}
 	catch (...) 
 	{
-		async_utils::async_print("\t[SYNCWIZARD SERVER] Unknown error occured on main_loop()!");
+		aprint("\t[SYNCWIZARD SERVER] Unknown error occured on main_loop()!");
 		throw std::runtime_error("Unknown error occured on main_loop()");
 	}
 }

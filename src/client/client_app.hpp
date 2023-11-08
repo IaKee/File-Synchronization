@@ -39,6 +39,7 @@ namespace client_app
             std::atomic<bool> running_app_;
             std::atomic<bool> running_sender_;
             std::atomic<bool> running_receiver_;
+            std::atomic<bool> running_sync_;
 
             // internal buffers
             std::string ui_buffer_;
@@ -54,8 +55,10 @@ namespace client_app
             user_interface::UserInterface UI_; 
 
             // file management
-            std::string sync_dir_path_;
-            std::string async_dir_path_;
+            std::string sync_dir_path_ = "";
+            std::string async_dir_path_ = "";
+            const std::string default_sync_dir_path_ = "./sync dir";
+            const std::string default_async_dir_path_ = "./downloads";
 
             // mutexes
             std::mutex inotify_buffer_mtx_;
@@ -77,7 +80,8 @@ namespace client_app
 
             // other private methods
             bool set_sync_dir_(std::string new_directory);
-            
+            void start_sync_(std::string new_path = "");
+
             // command handlers
             void process_user_interface_commands_();
             void process_inotify_commands_();

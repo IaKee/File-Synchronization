@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <cstdio>
 #include <ctime>
+#include <cstring>
 #include <iostream>
 #include <regex>
 #include <string>
@@ -13,18 +14,13 @@
 #include <iomanip>
 #include <condition_variable>
 #include <vector>
-
-// C Standard Libraries
-#include <ctype.h>
 #include <unistd.h>
-#include <sys/select.h>
 
 #define CRYPTOPP_ENABLE_NAMESPACE_WEAK 1
 #include <cryptopp/cryptlib.h>
 #include <cryptopp/md5.h>
 #include <cryptopp/hex.h>
 #include <cryptopp/files.h>
-
 
 // locals
 #include "utils.hpp"
@@ -61,8 +57,8 @@ bool is_valid_address(const std::string& ip_address)
 bool is_valid_port(int port) 
 {
     // checks if the given port is in the port range
-    int portValue = port;
-    return portValue >= 0 && portValue <= 65535;
+    int port_value = port;
+    return port_value >= 0 && port_value <= 65535;
 }
 
 bool is_valid_path(std::string path)
@@ -129,7 +125,7 @@ json get_json_contents(const std::string& path)
     std::ifstream file(path);
     if(!file.is_open())
     {
-        throw std::runtime_error("Could not read json file! Please check system permissions and try again!");
+        throw std::runtime_error("[UTILS] Could not read json file! Please check system permissions and try again!");
     }
 
     // reads json contents
@@ -151,7 +147,7 @@ void save_json_to_file(json data, const std::string& filename)
     } 
     else 
     {
-        throw std::runtime_error("Could not open file '" + filename + "'!");
+        throw std::runtime_error("[UTILS] Could not open file '" + filename + "'!");
     }
 }
 
@@ -165,6 +161,7 @@ std::string get_machine_name()
     {
         return "UNKNOWN";
     }
+    return "";
 }
 
 std::time_t get_time()
@@ -197,7 +194,7 @@ std::vector<std::vector<char>> bufferize_file(std::string file_path, std::size_t
     
     if(!file.is_open()) 
     {
-        throw std::runtime_error("[UTILS] Could not acess file to bufferize: " + file_path);
+        throw std::runtime_error("[UTILS] Could not bufferize file \"" + file_path + "\"");
     }
 
     std::vector<std::vector<char>> buffers;
@@ -224,8 +221,18 @@ void rename_replacing(std::string& old_path, std::string& new_path)
 {
     if(!std::rename(old_path.c_str(), new_path.c_str()))
     {
-        throw std::runtime_error("Could nome rename file " + old_path);
+        throw std::runtime_error("[UTILS] Could nome rename file " + old_path);
     }
+}
+
+std::string file_without_extension(std::string file_name) 
+{
+    size_t last_dot_pos = file_name.find_last_of('.');
+    if (last_dot_pos != std::string::npos) 
+    {
+        return file_name.substr(0, last_dot_pos);
+    }
+    return file_name;
 }
 
 int get_folder_space(std::string folder_path, std::string param = "")
@@ -250,18 +257,18 @@ int get_folder_space(std::string folder_path, std::string param = "")
             }
             else
             {
-                throw std::runtime_error("No valid parameter specified!");
+                throw std::runtime_error("[UTILS] No valid parameter specified!");
             }
 
         }
         else
         {
-            throw std::runtime_error("Given path is not a valid folder!");
+            throw std::runtime_error("[UTILS] Given path is not a valid folder!");
         }
     } 
     else 
     {
-        throw std::runtime_error("Given path does not exist!");
+        throw std::runtime_error("[UTILS] Given path does not exist!");
     }
 }
 
@@ -280,123 +287,4 @@ std::vector<std::string> split_buffer(const char* buffer)
     }
     tokens.push_back(std::string(start_pos));
     return tokens;
-}
-
-//std::string async_utils::terminal_buffer = std::string("");
-std::mutex cout_mtx;
-std::condition_variable cout_cv;
-
-// input capturing
-std::atomic<bool> capturing = false;
-std::thread input_th;
-std::queue<std::string> input_buffer;
-std::mutex input_mtx;
-std::condition_variable input_cv;
-void async_utils::async_print(std::string content, bool endl)
-{
-    std::lock_guard<std::mutex> out_lock(cout_mtx);
-
-    printf("\r\033[K"); // deletes current line
-    if(endl)
-    {
-        content += '\n';
-    }
-    content += "\t#> " + terminal_buffer;
-    
-    std::cout << content << std::flush;
-}
-
-void async_utils::add_to_buffer(char c)
-{
-    terminal_buffer += c;
-}
-
-void async_utils::backspace_buffer()
-{
-    terminal_buffer.pop_back();
-}
-
-std::string async_utils::get_buffer()
-{
-    {
-        std::unique_lock<std::mutex> lock(input_mtx);
-        input_cv.wait(lock, [](){return input_buffer.size() != 0;});
-    }
-
-    if(!input_buffer.empty())
-    {
-        std::string buf = input_buffer.front();
-        input_buffer.pop();
-
-        return buf;
-    }
-    return "";
-}
-
-void async_utils::start_capture()
-{
-    capturing.store(true);
-
-    input_th = std::thread(capture_loop);
-}
-
-void async_utils::stop_capture()
-{
-    capturing.store(false);
-
-    input_th.join();
-}
-
-void async_utils::capture_loop()
-{
-    struct timeval input_timeout;
-    input_timeout.tv_sec = 1;
-    input_timeout.tv_usec = 0;
-
-    char c;
-    while(capturing.load() == true)
-    {
-        fd_set read_fds;
-        FD_ZERO(&read_fds);
-        FD_SET(STDIN_FILENO, &read_fds);
-
-        int result = select(STDIN_FILENO + 1, &read_fds, nullptr, nullptr, &input_timeout);
-        
-        if(result > 0 && FD_ISSET(STDIN_FILENO, &read_fds)) 
-        {
-            c = std::cin.get();
-            {        
-                switch(c)
-                {
-                    case '\n':
-                    {
-                        std::lock_guard<std::mutex> lock(input_mtx);
-                        input_buffer.push(terminal_buffer);
-                        std::string strtmp = std::string(terminal_buffer);
-                        terminal_buffer.clear();
-                        async_print("\t#> " + strtmp);
-                        input_cv.notify_one();
-                        break;
-                    }
-                    case ' ':
-                        add_to_buffer(' ');
-                        async_print("", false);
-                        break;
-                    case 127:
-                        if(!terminal_buffer.empty())
-                        {
-                            backspace_buffer();
-                            async_print("", false);
-                        }
-                        break;
-                    default:
-                        if(isalnum(c))
-                        {
-                            add_to_buffer(c);
-                            async_print("", false);
-                        }
-                }
-            }
-        }
-    }
 }

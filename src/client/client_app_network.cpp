@@ -16,14 +16,16 @@
 // local
 #include "client_app.hpp"
 #include "../include/common/connection_manager.hpp"
+#include "../include/common/async_cout.hpp"
 #include "../include/common/utils.hpp"
 #include "../include/common/utils_packet.hpp"
 
 using namespace client_app;
+using namespace async_cout;
 
 void Client::start_receiver()
 {
-    async_utils::async_print("\t[SYNCWIZARD CLIENT] Starting up receiver module.");
+    aprint("\t[SYNCWIZARD CLIENT] Starting up receiver module.");
     running_receiver_.store(true);
     receiver_th_ = std::thread(
         [this]()
@@ -34,7 +36,7 @@ void Client::start_receiver()
 
 void Client::stop_receiver()
 {
-    async_utils::async_print("\t[SYNCWIZARD CLIENT] Stopping receiver module...");
+    aprint("\t[SYNCWIZARD CLIENT] Stopping receiver module...");
     running_receiver_.store(false);
     if(receiver_th_.joinable())
     {
@@ -50,7 +52,7 @@ void Client::receiver_loop()
         std::unique_lock<std::mutex> lock(receive_mtx_);
         if (running_receiver_.load() == false)
         {
-            async_utils::async_print("\t[SYNCWIZARD CLIENT] Stopping receiver module...");
+            aprint("\t[SYNCWIZARD CLIENT] Stopping receiver module...");
             return;
         }   
 
@@ -68,7 +70,7 @@ void Client::receiver_loop()
             {
                 case 0:
                 {
-                    async_utils::async_print("\t[SYNCWIZARD CLIENT] Received malformed string from server.");
+                    aprint("\t[SYNCWIZARD CLIENT] Received malformed string from server.");
                     break;
                 }
                 case 1:
@@ -184,7 +186,7 @@ void Client::receiver_loop()
 
 void Client::start_sender()
 {
-    async_utils::async_print("\t[SYNCWIZARD CLIENT] Starting up sender module.");
+    aprint("\t[SYNCWIZARD CLIENT] Starting up sender module.");
     running_sender_.store(true);
     sender_th_ = std::thread(
         [this]()
@@ -195,7 +197,7 @@ void Client::start_sender()
 
 void Client::stop_sender()
 {
-    async_utils::async_print("\t[SYNCWIZARD CLIENT] Stopping sender module...");
+    aprint("\t[SYNCWIZARD CLIENT] Stopping sender module...");
     running_sender_.store(false);
     send_cv_.notify_one();
     if(sender_th_.joinable())
@@ -216,8 +218,14 @@ void Client::sender_loop()
 
             if(running_sender_.load() == false)
             {
-                async_utils::async_print("\t[SYNCWIZARD CLIENT] Stopping sender module...");
+                aprint("\t[SYNCWIZARD CLIENT] Stopping sender module...");
                 return;
+            }
+
+            // process inotify events
+            if(!inotify_buffer_.empty())
+            {
+                process_inotify_commands_();
             }
 
             if(sender_buffer_.empty() == false)
@@ -227,7 +235,6 @@ void Client::sender_loop()
 
                 sender_buffer_.erase(sender_buffer_.begin());
             }
-
         }
         catch(const std::exception& e)
         {

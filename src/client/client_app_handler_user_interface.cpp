@@ -5,12 +5,14 @@
 // local
 #include "client_app.hpp"
 #include "../include/common/utils.hpp"
+#include "../include/common/async_cout.hpp"
 #include "../include/common/utils_packet.hpp"
 #include "../include/common/user_interface.hpp"
 #include "../include/common/connection_manager.hpp"
 #include "../include/common/inotify_watcher.hpp"
 
 using namespace client_app;
+using namespace async_cout;
 namespace fs = std::filesystem;
 
 void Client::process_user_interface_commands_()
@@ -31,7 +33,7 @@ void Client::process_user_interface_commands_()
 
             if(command_name == "exit")
             {
-                async_utils::async_print("\t[SYNCWIZARD CLIENT] Stop requested by user...");
+                aprint("\t[SYNCWIZARD CLIENT] Stop requested by user...");
 
                 // informs server
                 packet exit_packet;
@@ -46,7 +48,7 @@ void Client::process_user_interface_commands_()
                 }
 
                 // deletes temporary files
-                async_utils::async_print("\t[SYNCWIZARD CLIENT] Deleting temporary download files...");
+                aprint("\t[SYNCWIZARD CLIENT] Deleting temporary download files...");
                 delete_temporary_download_files_(this->sync_dir_path_);
 
                 if(inotify_.is_running() == true)
@@ -56,6 +58,11 @@ void Client::process_user_interface_commands_()
                 running_app_.store(false);
                 running_receiver_.store(false);
                 running_sender_.store(false);
+                break;
+            }
+            else if(command_name == "help")
+            {
+                // TODO: this
                 break;
             }
             else
@@ -70,26 +77,7 @@ void Client::process_user_interface_commands_()
             std::string command_name = ui_sanitized_buffer_[0];
             std::string args = ui_sanitized_buffer_[1];
 
-            if(command_name == "get" && args == "sync_dir")
-            {
-                if(inotify_.is_running() == false)
-                {
-                    this->sync_dir_path_ = "./sync_dir";
-                    inotify_.init(
-                        this->sync_dir_path_, 
-                        this->inotify_buffer_, 
-                        this->inotify_buffer_mtx_);
-                    inotify_.start_watching();
-                    async_utils::async_print("\t[SYNCWIZARD CLIENT] Synchronization routine initialized!");
-                    break;
-                }
-                else
-                {
-                    async_utils::async_print("\t[SYNCWIZARD CLIENT] Synchronization routine is already running!");
-                    break;
-                }
-            }
-            else if(command_name == "download")
+            if(command_name == "download")
             {
                 // user requesting an upload to keep in another folder
                 request_async_download_(args);
@@ -115,7 +103,7 @@ void Client::process_user_interface_commands_()
             }
             else
             {
-                async_utils::async_print("\t[SYNCWIZARD CLIENT] Could not find a valid command by \"" + ui_buffer_ + "\"!");
+                aprint("\t[SYNCWIZARD CLIENT] Could not find a valid command by \"" + ui_buffer_ + "\"!");
                 break;
             }
         }
@@ -123,29 +111,25 @@ void Client::process_user_interface_commands_()
         {
             if(ui_sanitized_buffer_[0] == "get" && ui_sanitized_buffer_[1] == "sync" && ui_sanitized_buffer_[2] == "dir")
             {
-                if(!inotify_.is_running())
-                {
-                    sync_dir_path_ = "./sync_dir";
-                    inotify_.init(sync_dir_path_, inotify_buffer_, inotify_buffer_mtx_);
-                    inotify_.start_watching();
-                    async_utils::async_print("\t[SYNCWIZARD CLIENT] Synchronization routine initialized!");
-                    break;
-                }
-                else
-                {
-                    async_utils::async_print("\t[SYNCWIZARD CLIENT] Synchronization already initialized!");
-                    break;
-                }
+                aprint("\t[SYNCWIZARD CLIENT] Starting synchronization routine...");
+
+                // first gets rid of any temporary download files
+                this->delete_temporary_download_files_();
+
+                // requests server to start file synchronization methods
+                // TODO: this
+                this->start_sync_();
+                break;
             }
             else
             {
-                async_utils::async_print("\t[SYNCWIZARD CLIENT] Could not find a valid command by \"" + ui_buffer_ + "\"!");
+                aprint("\t[SYNCWIZARD CLIENT] Could not find a valid command by \"" + ui_buffer_ + "\"!");
                 break;
             }
         }
         default:
         {
-            async_utils::async_print("\t[SYNCWIZARD CLIENT] Could not find a valid command by \"" + ui_buffer_ + "\"!");
+            aprint("\t[SYNCWIZARD CLIENT] Could not find a valid command by \"" + ui_buffer_ + "\"!");
             break;
         }
     }
@@ -153,6 +137,7 @@ void Client::process_user_interface_commands_()
 
 void Client::process_inotify_commands_()
 {
+    // TODO: this
     int inotify_nargs = inotify_buffer_.size();
     switch (inotify_nargs)
     {
@@ -173,7 +158,7 @@ void Client::process_inotify_commands_()
         }
         default:
         {
-            async_utils::async_print("\t[SYNCWIZARD CLIENT] Invalid inotify event!");
+            aprint("\t[SYNCWIZARD CLIENT] Invalid inotify event!");
             break;
         }
     }

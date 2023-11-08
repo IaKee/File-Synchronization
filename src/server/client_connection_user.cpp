@@ -15,12 +15,12 @@
 
 // locals
 #include "client_connection.hpp"
-#include "../include/common/json.hpp"
 #include "../include/common/utils.hpp"
+#include "../include/common/async_cout.hpp"
 
+using namespace async_cout;
 using namespace client_connection;
 namespace fs = std::filesystem;
-using json = nlohmann::json;
 
 User::User(
     std::string username, 
@@ -34,7 +34,7 @@ User::User(
     // checks if user had a folder on the server
     if(!fs::exists(user_dir_path_))
     {
-        async_utils::async_print("\t[USER MANAGER] Creating folder for user " + username + "...");
+        aprint("\t[USER MANAGER] Creating folder for user " + username + "...");
         if(!create_directory(user_dir_path_))
         {
             throw std::runtime_error("[USER MANAGER] Could not create folder for user " + username);
@@ -43,7 +43,7 @@ User::User(
 
     // after loading user, starts up overseer thread to process user events
     start_overseer();
-    async_utils::async_print("\t[USER MANAGER] Overseer initialized for user \"" + username_ + "\"...");
+    aprint("\t[USER MANAGER] Overseer initialized for user \"" + username_ + "\"...");
 }
 
 std::string User::get_username()
@@ -127,7 +127,7 @@ void User::broadcast_other_sessions(int caller_sockfd, packet& p)
     // this prints for every packet, remove for better performance
     std::string output = "\t[USER MANAGER] Broadcasting packet on user " + username_;
     output += " from session " + std::to_string(caller_sockfd) + ".";
-    async_utils::async_print(output);
+    aprint(output);
 
     for(client_connection::ClientSession* session : sessions_)
     {
@@ -144,7 +144,7 @@ void User::broadcast_other_sessions(int caller_sockfd, packet& p)
             std::string output = "\t[USER MANAGER] An exception happened ";
             output += "while sending buffer to session " + session->get_socket_fd();
             output += "! Errors caught: " + std::string(e.what());
-            async_utils::async_print(output);
+            aprint(output);
         }     
     }
 }
@@ -163,7 +163,7 @@ void User::broadcast(packet& p)
             std::string output = "\t[USER MANAGER] An exception happened ";
             output += "while sending buffer to session " + session->get_socket_fd();
             output += "! Errors caught: " + std::string(e.what());
-            async_utils::async_print(output);
+            aprint(output);
         }     
     }
 }
@@ -186,7 +186,7 @@ std::string User::get_home_directory()
 
 void User::start_overseer()
 {
-    async_utils::async_print("\t[USER MANAGER] Initializing overseer for user \"" + username_ + "\"...");
+    aprint("\t[USER MANAGER] Initializing overseer for user \"" + username_ + "\"...");
     overseer_running_.store(true);
     overseer_th_ = std::thread(
         [this]()
@@ -224,7 +224,7 @@ void User::overseer_loop()
             }
             else
             {
-                // tries to ping session
+                // tries renew timer by pinging session
                 session->send_ping();
             }
         }

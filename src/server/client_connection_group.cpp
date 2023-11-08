@@ -9,9 +9,10 @@
 #include "client_connection.hpp"
 #include "../include/common/json.hpp"
 #include "../include/common/utils.hpp"
+#include "../include/common/async_cout.hpp"
 
 using namespace client_connection;
-using json = nlohmann::json;
+using namespace async_cout;
 
 UserGroup::UserGroup(
     std::function<void(const packet& p, int sockfd, int timeout)> send_callback,
@@ -56,7 +57,7 @@ void UserGroup::load_user(std::string username)
     //client_connection::User new_user(username, sync_dir_);
     //users_.push_back(&new_user);
     users_.push_back(new_user.release());
-    async_utils::async_print("\t[USER GROUP MANAGER] User \"" + username + "\" loaded to vector.");
+    aprint("\t[USER GROUP MANAGER] User \"" + username + "\" loaded to vector.");
 }
 
 void UserGroup::unload_user(std::string username)
@@ -69,7 +70,7 @@ void UserGroup::unload_user(std::string username)
         {   
             // after disconnecting, removes it from the list
             it = users_.erase(it);
-            async_utils::async_print("[USER GROUP MANAGER] User " + username + " removed.");
+            aprint("[USER GROUP MANAGER] User " + username + " removed.");
             return;
         }
         else

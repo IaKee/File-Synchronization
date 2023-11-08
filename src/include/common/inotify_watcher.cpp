@@ -8,6 +8,7 @@
 
 // local
 #include "inotify_watcher.hpp"
+#include "async_cout.hpp"
 #include "utils.hpp"
 
 const int EVENT_SIZE = sizeof(struct inotify_event);
