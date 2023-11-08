@@ -1,11 +1,13 @@
 #include <iostream>
 
+#include "async_cout.hpp"
 #include "utils.hpp"
 #include "utils_packet.hpp"
 #include "connection_manager.hpp"
 
 using namespace connection;
 using namespace utils_packet;
+using namespace async_cout;
 
 ClientConnectionManager::ClientConnectionManager()
     :   is_connected_(false)
@@ -15,13 +17,13 @@ ClientConnectionManager::ClientConnectionManager()
 
 void ClientConnectionManager::connect_to_server(std::string address, int port) 
 {   
-    async_utils::async_print("\t[CLIENT CONNECTION MANAGER] Resolving host name...");
+    aprint("\t[CLIENT CONNECTION MANAGER] Resolving host name...");
     std::string adjusted_address = this->get_host_by_name(address);
     this->set_address(adjusted_address);
     this->set_port(port);
 
     std::string ip_addr = this->get_address();
-    async_utils::async_print("\t[CLIENT CONNECTION MANAGER] Connecting to server..." 
+    aprint("\t[CLIENT CONNECTION MANAGER] Connecting to server..." 
         + ip_addr
         + ":" 
         + std::to_string(port));
@@ -75,7 +77,7 @@ int ClientConnectionManager::login(std::string username, std::string machine_nam
         
         if(sanitized_payload[0] == "login" && sanitized_payload[1] == "ok")
         {
-            async_utils::async_print("[CLIENT CONNECTION MANAGER] Login approved!");
+            aprint("[CLIENT CONNECTION MANAGER] Login approved!");
             return std::stoi(sanitized_payload[2]);;
         }
         else

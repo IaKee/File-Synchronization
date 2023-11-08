@@ -14,8 +14,10 @@
 // locals
 #include "client_connection.hpp"
 #include "../include/common/utils.hpp"
+#include "../include/common/async_cout.hpp"
 #include "../include/common/utils_packet.hpp"
 
+using namespace async_cout;
 using namespace client_connection;
 namespace fs = std::filesystem;
 
@@ -23,24 +25,24 @@ void ClientSession::malformed_command_(std::string command)
 {
     if(command.size() == 0)
     {
-        std::string output = "\t[SESSION MANAGER] " + get_identifier();
+        std::string output = "\t[SESSION COMMANDS MANAGER] " + get_identifier();
         output += " Recieved empty string as command.";
-        async_utils::async_print(output);
+        aprint(output);
     }
     else
     {
-        std::string output = "\t[SESSION MANAGER] " + get_identifier();
+        std::string output = "\t[SESSION COMMANDS MANAGER] " + get_identifier();
         output += " Recieved malformed command: " + command;
-        async_utils::async_print(output);
+        aprint(output);
     }
 }
 
 void ClientSession::client_requested_logout_()
 {
     // received logout request from user
-    std::string output = "\t[SESSION MANAGER] " + get_identifier();
+    std::string output = "\t[SESSION COMMANDS MANAGER] " + get_identifier();
     output += " Requested logoff.";
-    async_utils::async_print(output);
+    aprint(output);
 
     running_receiver_.store(false);
     running_sender_.store(false);
@@ -69,9 +71,9 @@ void ClientSession::client_responded_ping_()
     auto ping_val = std::chrono::duration_cast<
         std::chrono::microseconds>(ping_end - ping_start_);
     double ping_ms = ping_val.count() / 1000.0; // Em milissegundos
-    std::string output = "\t[SESSION MANAGER]" + get_identifier();
+    std::string output = "\t[SESSION COMMANDS MANAGER]" + get_identifier();
     output += "Pinged with a response time of " + std::to_string(ping_ms) + "ms.";
-    async_utils::async_print(output);
+    aprint(output);
 }
 
 void ClientSession::client_requested_delete_(std::string args, packet buffer, std::string arg2)
@@ -83,10 +85,10 @@ void ClientSession::client_requested_delete_(std::string args, packet buffer, st
 
     if(!is_valid_path(local_file_path))
     {
-        std::string output = "\t[SESSION MANAGER]" + get_identifier();
+        std::string output = "\t[SESSION COMMANDS MANAGER]" + get_identifier();
         output += " Delete command for file \"" + file_name;
         output += "\" failed! Could not acess given path!";
-        async_utils::async_print(output);
+        aprint(output);
 
         // mounts fail packet
         packet fail_packet;
@@ -173,9 +175,9 @@ void ClientSession::client_requested_slist_()
         sender_buffer_.push_back(slist_packet);
     }
 
-    output = "[SESSION MANAGER] " + get_identifier();
+    output = "[SESSION COMMANDS MANAGER] " + get_identifier();
     output += " Sent slist to session.";
-    async_utils::async_print(output);
+    aprint(output);
     return;
 }
 
@@ -258,9 +260,9 @@ void ClientSession::client_requested_flist_()
         sender_buffer_.push_back(flist_packet);
     }
 
-    output = "[SESSION MANAGER] " + get_identifier();
+    output = "[SESSION COMMANDS MANAGER] " + get_identifier();
     output += " Sent flist to session.";
-    async_utils::async_print(output);
+    aprint(output);
     return;
 }
 
@@ -288,10 +290,10 @@ void ClientSession::client_requested_adownload_(std::string args)
         }
         send_cv_.notify_one();
 
-        std::string output = "\t[SESSION MANAGER]" + get_identifier();
+        std::string output = "\t[SESSION COMMANDS MANAGER]" + get_identifier();
         output += " Async download failed! Could not acess given file: ";
         output += "\"" + args + "\"!";
-        async_utils::async_print(output);
+        aprint(output);
         return;
     }
 
@@ -307,7 +309,7 @@ void ClientSession::client_requested_adownload_(std::string args)
         {
             std::string output = "\t[SESSION MANAGER] " + get_identifier();
             output += " Server could not bufferize file to send: " + args;
-            async_utils::async_print(output);
+            aprint(output);
             
             // mounts packet
             packet fail_packet;
@@ -382,9 +384,9 @@ void ClientSession::client_requested_adownload_(std::string args)
     else
     {
         // if there is no mutex for this file, an error has occured!
-        std::string output = "\n[SESSION MANAGER] " + get_identifier();
+        std::string output = "\n[SESSION COMMANDS MANAGER] " + get_identifier();
         output += " No file mutex was found for file \"" + args + "\"!";
-        async_utils::async_print(output);
+        aprint(output);
         return;
     }
 }
@@ -393,12 +395,15 @@ void ClientSession::client_sent_clist_(packet buffer, std::string args)
 {
     // client sent a list of file currently on their local machine
     // request updates to make server and session up to date
+    // creates upload/download requests for files not synchronized
+    // ignores temporary files
+
     if(args == "fail")
     {
         // client could not retrieve listed files
-        std::string output = "\t[SESSION MANAGER] " + get_identifier();
+        std::string output = "\t[SESSION COMMANDS MANAGER] " + get_identifier();
         output += " Client could not retrieve synchronized files";
-        async_utils::async_print(output);
+        aprint(output);
     }
 
     // session files
@@ -417,12 +422,15 @@ void ClientSession::client_sent_clist_(packet buffer, std::string args)
     // file difference between session and server
     std::vector<std::string> files_not_in_session;
     std::vector<std::string> files_not_in_current_server;
+    std::vector<std::string> server_temporary_files;
+    std::vector<std::string> session_temporary_files;
 
-    // discards temporary download files from buffers
+    // moves temporary download files from current files buffer to the propper one
     for(auto it = current_server_files.begin(); it != current_server_files.end();) 
     {
         if((*it).find(".swizdownload") != std::string::npos)
         {
+            server_temporary_files.push_back((*it));
             it = current_server_files.erase(it);
         } 
         else 
@@ -430,10 +438,13 @@ void ClientSession::client_sent_clist_(packet buffer, std::string args)
             ++it;
         }
     }
+
+    // does the same thing for session files
     for(auto it = session_files.begin(); it != session_files.end();) 
     {
         if((*it).find(".swizdownload") != std::string::npos)
         {
+            session_temporary_files.push_back((*it));
             it = session_files.erase(it);
         } 
         else 
@@ -442,24 +453,48 @@ void ClientSession::client_sent_clist_(packet buffer, std::string args)
         }
     }
 
-    // checks for files the session does not have
+    // checks for unsynchronized session files
     for(const std::string& file : current_server_files) 
     {
-        if(std::find(session_files.begin(), session_files.end(), file) == session_files.end()) 
+        if(std::find(
+            session_files.begin(), 
+            session_files.end(), 
+            file) == session_files.end()) 
         {
-            files_not_in_session.push_back(file);
+            // session does not have current file
+            std::string temporary_file_name = file_without_extension(file) + ".swizdownload";
+
+            // checks for temporary files
+            if(std::find(
+                session_temporary_files.begin(), 
+                session_temporary_files.end(), 
+                temporary_file_name) == session_temporary_files.end())
+            {
+                // session does not have current file at all
+                files_not_in_session.push_back(file);
+            }
         }
     }
 
-    // checks for files server does not have
+    // checks for unsynchronized server files
     for(const std::string& file : session_files) 
     {
-        if (std::find(
+        if(std::find(
             current_server_files.begin(), 
             current_server_files.end(), 
             file) == current_server_files.end()) 
         {
-            files_not_in_current_server.push_back(file);
+            // server does not have current file
+            std::string temporary_file_name = file_without_extension(file) + ".swizdownload";
+
+            //checks for temporary files
+            if(std::find(
+                server_temporary_files.begin(), 
+                server_temporary_files.end(), 
+                temporary_file_name) == server_temporary_files.end())
+            {
+                files_not_in_current_server.push_back(file);
+            }
         }
     }
 
@@ -469,7 +504,6 @@ void ClientSession::client_sent_clist_(packet buffer, std::string args)
     output += " Server will request accordingly commands to update session.";
 
     int delta_packets = 0;
-
     // updates session with missing files
     for(const std::string& file : files_not_in_session) 
     {
@@ -485,9 +519,9 @@ void ClientSession::client_sent_clist_(packet buffer, std::string args)
 
             if(!sfile.is_open()) 
             {
-                std::string output = "\t[SESSION MANAGER] " + get_identifier();
+                std::string output = "\t[SESSION COMMANDS MANAGER] " + get_identifier();
                 output += " Server could not bufferize file to send: " + file;
-                async_utils::async_print(output);
+                aprint(output);
                 
                 // jumps to the next file...
                 continue;
@@ -549,9 +583,9 @@ void ClientSession::client_sent_clist_(packet buffer, std::string args)
         else
         {
             // if there is no mutex for this file, an error has occured!
-            std::string output = "\n[SESSION MANAGER] " + get_identifier();
+            std::string output = "\n[SESSION COMMANDS MANAGER] " + get_identifier();
             output += " No file mutex was found for file \"" + file + "\"!";
-            async_utils::async_print(output);
+            aprint(output);
             
             // goes to the next file...
             continue;
@@ -575,10 +609,10 @@ void ClientSession::client_sent_clist_(packet buffer, std::string args)
         send_cv_.notify_one();
     }
 
-    output = "\t[SESSION MANAGER] " + get_identifier();
+    output = "\t[SESSION COMMANDS MANAGER] " + get_identifier();
     output += " Files now should be updating... A total of" + std::to_string(delta_packets);
-    output += " were needed for this.";
-    async_utils::async_print(output);
+    output += " were created for this.";
+    aprint(output);
 }
 
 void ClientSession::client_sent_sdownload_(std::string args, packet buffer, std::string arg2)
@@ -588,10 +622,10 @@ void ClientSession::client_sent_sdownload_(std::string args, packet buffer, std:
     if(arg2 == "fail")
     {
         // command failed
-        std::string output = "\t[SESSION MANAGER] " + get_identifier();
+        std::string output = "\t[SESSION COMMANDS MANAGER] " + get_identifier();
         output += " Server requested upload of file \"" + args;
         output += "\" failed!";
-        async_utils::async_print(output);
+        aprint(output);
     }
     else
     {
@@ -602,9 +636,9 @@ void ClientSession::client_sent_sdownload_(std::string args, packet buffer, std:
         
         if(arg2 == "fail")
         {
-            std::string output = "\t[SESSION MANAGER]" + get_identifier();
+            std::string output = "\t[SESSION COMMANDS MANAGER]" + get_identifier();
             output += " Download request failed!";
-            async_utils::async_print(output);
+            aprint(output);
             return;
         }
 
@@ -628,9 +662,9 @@ void ClientSession::client_sent_sdownload_(std::string args, packet buffer, std:
             }
             send_cv_.notify_one();
 
-            std::string output = "\t[SESSION MANAGER] " + get_identifier();
+            std::string output = "\t[SESSION COMMANDS MANAGER] " + get_identifier();
             output += "Could not write on file \"" + file_name + "\" sent by user!";
-            async_utils::async_print(output);
+            aprint(output);
             return;
         }
         else 
@@ -674,10 +708,10 @@ void ClientSession::client_sent_supload_(std::string args, std::string arg2)
     if(arg2 == "fail")
     {
         // command failed
-        std::string output = "\t[SESSION MANAGER] " + get_identifier();
+        std::string output = "\t[SESSION COMMANDS MANAGER] " + get_identifier();
         output += " Server requested download of file \"" + args;
         output += "\" failed!";
-        async_utils::async_print(output);
+        aprint(output);
     }
     else
     {

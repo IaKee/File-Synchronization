@@ -7,8 +7,11 @@
 #include <sys/stat.h>
 
 #include "client_app.hpp"
+#include "../include/common/async_cout.hpp"
 
 using namespace client_app;
+using namespace async_cout;
+
 namespace fs = std::filesystem;
 
 void Client::request_async_download_(std::string args)
@@ -43,7 +46,7 @@ void Client::request_async_download_(std::string args)
 
 void Client::request_list_server_(std::string args)
 {
-    // user requesting an upload to keep in another non synchronized folder
+    // user requesting a list of files contained
     packet list_packet;
     
     // mounts download command
@@ -97,7 +100,7 @@ void Client::request_delete_(std::string args)
     if(is_valid_path(local_file_path) == false)
     {
         std::string output = "\t[SYNCWIZARD CLIENT] Could not acess given file!";
-        async_utils::async_print(output);
+        aprint(output);
         return;
     }
     
@@ -153,10 +156,10 @@ void Client::upload_command_(std::string args, std::string reason)
 
     if(!is_valid_path(local_file_path))
     {
-        async_utils::async_print("\t[SYNCWIZARD CLIENT] Malformed upload request!");
+        aprint("\t[SYNCWIZARD CLIENT] Malformed upload request!");
         std::string output = "\t[SYNCWIZARD CLIENT] Could not acess requested file: \"";
         output += local_file_path + "\"!";
-        async_utils::async_print(output);
+        aprint(output);
         return;
     }
     else
@@ -182,7 +185,7 @@ void Client::upload_command_(std::string args, std::string reason)
             {
                 std::string output = "\t[SYNCWIZARD CLIENT] Local machine could not acess given file: ";
                 output += "\"" + local_file_path + "\"!";
-                async_utils::async_print(output);
+                aprint(output);
                 return;
             }
             else
@@ -258,7 +261,7 @@ void Client::pong_command_()
     
     std::string output = "\t[SYNCWIZARD CLIENT] Pinged server with a response time of ";
     output += std::to_string(ping_ms) + "ms.";
-    async_utils::async_print(output);
+    aprint(output);
 }
 
 void Client::list_command_(std::string args)
@@ -344,12 +347,14 @@ void Client::list_command_(std::string args)
 
     list_files_recursively(sync_dir_path_);
     
-    async_utils::async_print(output);
+    aprint(output);
     return;
 }
 
-void Client::delete_temporary_download_files_(std::string directory)
+int Client::delete_temporary_download_files_(std::string directory)
 {
+    int deleted_files = 0;
+
     if(fs::is_directory(directory) && fs::exists(directory)) 
     {
         for(const auto& entry : fs::directory_iterator(directory)) 
@@ -357,12 +362,27 @@ void Client::delete_temporary_download_files_(std::string directory)
             if(fs::is_regular_file(entry) && entry.path().extension() == ".swizdownload") 
             {
                 fs::remove(entry);
+                delete_file += 1;
             }
             else if(fs::is_directory(entry)) 
             {
-                delete_temporary_download_files_(entry.path()); // Recursivamente, para subpastas.
+                int deleted_files_subfolder = delete_temporary_download_files_(entry.path());
+
+                if(deleted_files_subfolder > 0)
+                {
+                    deleted_files += deleted_files_subfolder;
+                }
+                else
+                {
+                    aprint("[SYNCWIZARD CLIENT] Could not delete any temporary files on \"" + entry.path() + "\"");
+                }
             }
         }
+        return deleted_files;
+    }
+    else
+    {
+        return -1;
     }
 }
 
@@ -371,5 +391,5 @@ void Client::malformed_command_(std::string command)
     // invalid command request recieved from server
     std::string output = "\t[SYNCWIZARD CLIENT] Malformed \"";
     output += command + "\" command!";
-    async_utils::async_print(output);
+    aprint(output);
 }

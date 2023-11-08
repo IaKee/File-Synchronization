@@ -12,6 +12,10 @@
 #include "server.hpp"
 #include "../include/common/cxxopts.hpp"
 #include "../include/common/utils.hpp"
+#include "../include/common/async_cout.hpp"
+
+using namespace async_cout;
+using namespace server;
 
 struct termios old_settings, new_settings;
 void cleanup(int signal)
@@ -19,7 +23,7 @@ void cleanup(int signal)
 	tcsetattr(STDIN_FILENO, TCSANOW, &old_settings);
 	std::cout << "\n[CLEANUP] Restored terminal to cooked mode..." << std::endl;
 
-	async_utils::stop_capture();
+	stop_capture();
 	std::exit(signal);
 }
 
@@ -33,11 +37,12 @@ int main()
     new_settings.c_lflag &= ~(ICANON | ECHO);
     tcsetattr(STDIN_FILENO, TCSANOW, &new_settings);
 	std::signal(SIGINT, cleanup);
-	async_utils::start_capture();
+	
+	start_capture();
 
 	try
 	{
-		server::Server server;
+		Server server;
 		server.start();
 	}
 	catch(const std::exception& e)
@@ -46,10 +51,10 @@ int main()
     }
 	catch(...)
 	{
-		async_utils::async_print("[MAIN] Unknwon exception captured!");
+		aprint("[MAIN] Unknwon exception captured!");
 	}
 
-	async_utils::async_print("\t[MAIN] running cleanup...");
+	aprint("\t[MAIN] running cleanup...");
 	cleanup(0);
 	return 0;
 }

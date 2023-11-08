@@ -19,10 +19,12 @@
 #include "client_app.hpp"
 #include "../include/common/user_interface.hpp"
 #include "../include/common/connection_manager.hpp"
+#include "../include/common/async_cout.hpp"
 #include "../include/common/utils.hpp"
 #include "../include/common/inotify_watcher.hpp"
 
 using namespace client_app;
+using namespace async_cout;
 
 Client::Client(
     std::string username, 
@@ -40,59 +42,57 @@ Client::Client(
     machine_name_ = get_machine_name();
 
     // lang strings
-    async_utils::async_print("[STARTUP] SyncWizard Client initializing on " + machine_name_ + "...");
-    std::string ERROR_PARSING_CRITICAL = "Critical error parsing command-line options:";
+    aprint("[STARTUP] SyncWizard Client initializing on " + machine_name_ + "...");
+    
     std::string ERROR_PARSING_MISSING = "Missing required command-line options!";
-    std::string ERROR_PARSING_USERNAME = "Invalid username! It must be between 1 and 12 characters long, \
-    without spaces or symbols.";
-    std::string ERROR_PARSING_IP = "Invalid IP address! The correct format should be XXX.XXX.XXX.XXX, \
-    where X represents a number from 0 to 255, and there should be dots (.) separating the sections.";
-    std::string ERROR_PARSING_PORT = "Invalid port! The correct port should be between 0 and 65535." ;
-    const std::string HELP_DESCRIPTION = "This option displays the description of the available \
+    std::string HELP_DESCRIPTION = "This option displays the description of the available \
     program arguments. If you need help or have questions about how to use SyncWizard, you \
     can use this option to get more information.";
-    const std::string RUN_INFO = "Please run './SyncWizard -h' for more information.";
-    const std::string USERNAME_DESCRIPTION = "Use this option to specify the username to which \
+    std::string RUN_INFO = "Please run './SyncWizard -h' for more information.";
+    std::string USERNAME_DESCRIPTION = "Use this option to specify the username to which \
     the files will be associated. This is important for identifying the synchronized files \
     belonging to each user. It must be between 1 and 12 characters long, without spaces or \
     symbols.";
-    const std::string EXIT_MESSAGE = "Exiting the program...";
+    std::string EXIT_MESSAGE = "Exiting the program...";
     
     // validates launch arguments
     std::string error_description = "";
     if(!is_valid_username(username_))
     {
-        error_description = ERROR_PARSING_USERNAME;
+        error_description = "Invalid username! It must be between 1 and 12 characters long, \
+            without spaces or symbols.";
     }
     else if(!is_valid_address(server_address))
     {
-        error_description = ERROR_PARSING_IP;
+        error_description = "Invalid IP address! The correct format should be XXX.XXX.XXX.XXX, \
+            where X represents a number from 0 to 255, and there should be dots (.) separating the sections.";
     }
     else if(!is_valid_port(server_port))
     {
-        error_description = ERROR_PARSING_PORT;
+        error_description = "Invalid port! The correct port should be between 0 and 65535.";
     }    
 
     // stops initialization if some argument is not valid
     if(error_description != "")
     {   
-        async_utils::async_print("\t[SYNCWIZARD CLIENT] " + error_description);
-        async_utils::async_print("\t[SYNCWIZARD CLIENT] " + RUN_INFO);
+        aprint("\t[SYNCWIZARD CLIENT] " + error_description);
+        aprint("\t[SYNCWIZARD CLIENT] " + RUN_INFO);
+        std::string ERROR_PARSING_CRITICAL = "Critical error parsing command-line options:";
         throw std::invalid_argument(ERROR_PARSING_CRITICAL);
     }
 
     try
     {
         // creates socket
-        async_utils::async_print("\t[SYNCWIZARD CLIENT] Creating socket...");
+        aprint("\t[SYNCWIZARD CLIENT] Creating socket...");
         connection_manager_.create_socket();
 
         // resolves host name
-        async_utils::async_print("\t[SYNCWIZARD CLIENT] Resolving host name...");
+        aprint("\t[SYNCWIZARD CLIENT] Resolving host name...");
         std::string server_adjusted_address = connection_manager_.get_host_by_name(server_address);
 
         // tries to connect to server
-        async_utils::async_print("\t[SYNCWIZARD CLIENT] Attempting connection to server...");
+        aprint("\t[SYNCWIZARD CLIENT] Attempting connection to server...");
         connection_manager_.connect_to_server(server_address, server_port);
         
         // after being connected tries to send login request
@@ -114,25 +114,95 @@ Client::Client(
 
 Client::~Client()
 {
-    // on destroy
     // TODO: kill child threads here
     // TODO: close connection here
     close();
 };
 
       
-bool Client::set_sync_dir_(std::string new_directory) 
+void Client::start_sync_(std::string new_path) 
 {
-    // ensures a valid directory as syncDir
-    if(!is_valid_path(new_directory))
+    // initializes synchronization process on client, informs server
+    // by sending "clist" command to server
+    // it is impled that client is requesting file updates on both ends
+
+    // sync dir path is optional
+
+    if(running_sync_.load() == false)
     {
-       if(!create_directory(new_directory))
+        // checks if the download directories were previously set
+        // if not, uses the default path
+        if(sync_dir_path_.size() == 0)
+        {
+            this->sync_dir_path_ = this->default_sync_dir_path_;
+        }
+        if(async_dir_path_.size() == 0)
+        {
+            this->async_dir_path_ = this->default_async_dir_path_;
+        }
+
+        // checks for system paths permissions on the given folders
+        if(!is_valid_path(sync_dir_path_))
+        {
+            throw std::runtime_error("[CLIENT APP] Given sync dir path is not valid!");
+        }
+        if(!is_valid_path(async_dir_path_))
+        {
+            throw std::runtime_error("[CLIENT APP] Given async dir path is not valid!");
+        }
+
+        // checks for temporary download files and removes them
+        int deleted_sync_temp_files = delete_temporary_download_files_(sync_dir_path_);
+        int deleted_async_temp_files = delete_temporary_download_files_(async_dir_path_);
+        if(deleted_sync_temp_files > 0)
+        {
+            std::string output = "[CLIENT APP] Deleted " + std::to_string(deleted_sync_temp_files);
+            output += " incomplete download files from the sync dir.";
+            aprint(output)
+        }
+        else
+        {
+            std::string output = "[CLIENT APP] No incomplete files were found on the sync dir.";
+            aprint(output)
+        }
+        if(deleted_async_temp_files > 0)
+        {
+            std::string output = "[CLIENT APP] Deleted " + std::to_string(deleted_sync_temp_files);
+            output += " incomplete download files from the async dir.";
+            aprint(output)
+        }
+        else
+        {
+            std::string output = "[CLIENT APP] No incomplete files were found on the async dir.";
+        }
+
+        // initializes inotify watcher module
+        inotify_.init(
+            sync_dir_path_, 
+            inotify_buffer_, 
+            inotify_buffer_mtx_);
+        inotify_.start_watching();
+        
+        aprint("\t[SYNCWIZARD CLIENT] Synchronization routine initialized!");
+        break;
+    }
+    else
+    {
+        aprint("\t[SYNCWIZARD CLIENT] Synchronization routine is already running!");
+        break;
+    }
+
+    // starts synchronization routine, setting the new sync_dir path if needed
+    if(!is_valid_path(new_path))
+    {
+       if(!create_directory(new_path))
        {
             throw std::runtime_error("[CLIENT APP] Could not acess informed sync dir path!");
        }
-       return true;  // sync dir created
     }
-    return false;  // sync dir is valid and acessible
+
+    // sync dir is valid and acessible
+    
 }
 
 void Client::main_loop()
@@ -170,13 +240,14 @@ void Client::main_loop()
     }
     catch (const std::exception& e)
     {
-        async_utils::async_print("[SYNCWIZARD CLIENT] Exception occured on main_loop():\n\t\t" + std::string(e.what()));
-        throw std::runtime_error(e.what());
+        std::string output = "[SYNCWIZARD CLIENT] Exception occured on main_loop():\n\t\t" + std::string(e.what());
+        aprint(output);
+        throw std::runtime_error(output);
     }
     catch (...) 
     {
-        async_utils::async_print("[SYNCWIZARD CLIENT] Unknown exception occured on main_loop()!");
-        throw std::runtime_error("Unknown error occured on main_loop()!");
+        aprint("[SYNCWIZARD CLIENT] Unknown exception occured on main_loop()!");
+        throw std::runtime_error("[SYNCWIZARD CLIENT] Unknown error occured on main_loop()!");
     }
 }
 
@@ -188,12 +259,12 @@ void Client::start()
     }
     catch(const std::exception& e)
     {
-        async_utils::async_print("[SYNCWIZARD CLIENT] Exception occured on start():\n\t\t" + std::string(e.what()));
+        aprint("[SYNCWIZARD CLIENT] Exception occured on start():\n\t\t" + std::string(e.what()));
         throw std::runtime_error(e.what());
     }
     catch(...)
     {
-        async_utils::async_print("[SYNCWIZARD CLIENT] Unknown exception occured on start()!");
+        aprint("[SYNCWIZARD CLIENT] Unknown exception occured on start()!");
         throw std::runtime_error("Unknown error occured on start()!");
     }
     
@@ -204,7 +275,7 @@ void Client::stop()
     // stop user interface and command processing
     try
     {
-        async_utils::async_print("\t[SYNCWIZARD CLIENT] Exiting the program...");
+        aprint("\t[SYNCWIZARD CLIENT] Exiting the program...");
 
         running_app_.store(false);
         UI_.stop();
@@ -213,12 +284,12 @@ void Client::stop()
     }
     catch(const std::exception& e)
     {
-        async_utils::async_print("[SYNCWIZARD CLIENT] Error occured on stop(): " + std::string(e.what()));
+        aprint("[SYNCWIZARD CLIENT] Error occured on stop(): " + std::string(e.what()));
         throw std::runtime_error(e.what());
     }
     catch(...)
     {
-        async_utils::async_print("[SYNCWIZARD CLIENT] Unknown error occured on stop()!");
+        aprint("[SYNCWIZARD CLIENT] Unknown error occured on stop()!");
         throw std::runtime_error("Unknown error occured on stop()!");
     }
 }

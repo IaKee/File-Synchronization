@@ -14,11 +14,13 @@
 
 // locals
 #include "connection_manager.hpp"
+#include "async_cout.hpp"
 #include "utils.hpp"
 #include "utils_packet.hpp"
 
 // namespace
 using namespace connection;
+using namespace async_cout;
 
 ConnectionManager::ConnectionManager() 
     :   backlog_(5),
@@ -116,7 +118,7 @@ void ConnectionManager::set_address(std::string address)
 
 std::string ConnectionManager::get_host_by_name(const std::string host_name) 
 {   
-    async_utils::async_print("\t[CONNECTION MANAGER] Resolving host...");
+    aprint("\t[CONNECTION MANAGER] Resolving host...");
 
     struct hostent* host = gethostbyname(host_name.c_str());
     if(host == nullptr) 
@@ -140,7 +142,7 @@ void ConnectionManager::set_port(int port)
 
 void ConnectionManager::create_socket() 
 {   
-    async_utils::async_print("\t[CONNECTION MANAGER] Creating socket... ");
+    aprint("\t[CONNECTION MANAGER] Creating socket... ");
 
     // creates a new socket for communication
     sockfd_ = socket(AF_INET, SOCK_STREAM, 0);  // SOCK_STREAM specifies TCP
@@ -154,7 +156,7 @@ void ConnectionManager::create_socket()
 
 void ConnectionManager::close_socket()
 {
-    async_utils::async_print("\t[CONNECTION MANAGER] Closing socket...");
+    aprint("\t[CONNECTION MANAGER] Closing socket...");
     
     if (sockfd_ != -1) 
     {
@@ -289,7 +291,7 @@ void ConnectionManager::send_packet(const packet& p, int sockfd, int timeout)
     
     std::memcpy(header_buffer, &p, sizeof(packet) - sizeof(char*));
 
-    async_utils::async_print("sending something:" + std::to_string(sizeof(header_buffer)));
+    aprint("sending something:" + std::to_string(sizeof(header_buffer)));
     send_data(header_buffer, sizeof(header_buffer), sockfd, timeout);
 
     if (p.payload_size > 0)

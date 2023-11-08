@@ -32,6 +32,7 @@ void delete_file(const std::string& file_path);
 json get_json_contents(const std::string& path);
 void save_json_to_file(json data, const std::string& filename);
 void rename_replacing(std::string& old_path, std::string& new_path);
+std::string file_without_extension(std::string file_name); 
 int get_folder_space(std::string folder_path, std::string param);
 std::string get_file_name(std::string& path);
 std::string calculate_md5_checksum(const std::string& file_path);
@@ -44,18 +45,3 @@ std::string charraystr(char* char_array, size_t size);
 std::string get_machine_name();
 std::time_t get_time();
 std::vector<std::string> split_buffer(const char* buffer);
-
-namespace async_utils
-{
-    // asynchronous output
-    static std::string terminal_buffer = "";
-    void async_print(std::string content, bool endl=true);
-    void add_to_buffer(char c);
-    void backspace_buffer();
-    std::string get_buffer();
-
-    // terminal input capturing
-    void start_capture();
-    void stop_capture();
-    void capture_loop();
-}

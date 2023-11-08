@@ -10,7 +10,9 @@
 // locals
 #include "client_connection.hpp"
 #include "../include/common/utils.hpp"
+#include "../include/common/async_cout.hpp"
 
+using namespace async_cout;
 using namespace client_connection;
 namespace fs = std::filesystem;
 
@@ -42,7 +44,7 @@ void ClientSession::session_receiver_loop()
         
         if (running_receiver_.load() == false)
         {
-            async_utils::async_print("[SESSION MANAGER] Stopping sender...");
+            aprint("[SESSION NETWORK MANAGER] Stopping sender...");
             return;
         }
 
@@ -193,8 +195,8 @@ void ClientSession::session_receiver_loop()
         }
         catch(const std::exception& e)
         {
-            std::string output = "\t[SESSION MANAGER] " + get_identifier();
-            output += " Error recieving data: " + std::string(e.what());
+            std::string output = "\t[SESSION NETWORK MANAGER] " + get_identifier();
+            output += " Error receiving data: " + std::string(e.what());
             throw std::runtime_error(output);
         }
     }
@@ -392,7 +394,7 @@ void ClientSession::session_sender_loop()
         }
         catch(const std::exception& e)
         {
-            throw std::runtime_error("[SESSION MANAGER] Exception occured while running send: " + std::string(e.what()));
+            throw std::runtime_error("[SESSION NETWORK MANAGER] Exception occured while running send: " + std::string(e.what()));
         }
 
         send_cv_.notify_one();

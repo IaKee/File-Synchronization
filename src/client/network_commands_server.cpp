@@ -7,9 +7,11 @@
 #include <sys/stat.h>
 
 #include "client_app.hpp"
+#include "../include/common/async_cout.hpp"
 
 using namespace client_app;
 namespace fs = std::filesystem;
+using namespace async_cout;
 
 void Client::server_ping_command_()
 {
@@ -45,24 +47,24 @@ void Client::server_list_command_(std::string args, packet buffer)
             }
 
             // prints file list
-            async_utils::async_print(output);
+            aprint(output);
             return;
         }
         else
         {
             std::string output = "[\tSYNCWIZARD CLIENT] No files were found ";
             output += "on the server for your username!";
-            async_utils::async_print(output);
+            aprint(output);
             return;
         }
     }
     else if(args == "fail")
     {
-        async_utils::async_print("\t[SYNCWIZARD CLIENT] List server command failed!");
+        aprint("\t[SYNCWIZARD CLIENT] List server command failed!");
         
         std::string reason = "\t[SYNCWIZARD CLIENT] Captured error:";
         reason += std::string(buffer.payload, buffer.payload_size);
-        async_utils::async_print(reason);
+        aprint(reason);
         return;
     }
     else
@@ -94,8 +96,8 @@ void Client::server_download_command_(std::string args, std::string reason)
         }
         send_cv_.notify_one();
 
-        async_utils::async_print("\t[SYNCWIZARD CLIENT] Malformed upload request recieved from server!");
-        async_utils::async_print("\t[SYNCWIZARD CLIENT] Could not acess server requested file: \"" + file_path + "\"!");
+        aprint("\t[SYNCWIZARD CLIENT] Malformed upload request recieved from server!");
+        aprint("\t[SYNCWIZARD CLIENT] Could not acess server requested file: \"" + file_path + "\"!");
         return;
     }
     else
@@ -199,10 +201,10 @@ void Client::server_upload_command_(std::string args, std::string checksum, pack
         // user requested file download failed
         std::string output = "\t[SYNCWIZARD CLIENT] User requested ";
         output += "file upload for \"" + args + "\" failed!";
-        async_utils::async_print(output);
+        aprint(output);
         std::string reason = "\t[SYNCWIZARD CLIENT] Captured error:";
         reason += std::string(buffer.payload, buffer.payload_size);
-        async_utils::async_print(reason);
+        aprint(reason);
         return;
     }
 
@@ -226,8 +228,8 @@ void Client::server_upload_command_(std::string args, std::string checksum, pack
         }
         send_cv_.notify_one();
 
-        async_utils::async_print("\t[SYNCWIZARD CLIENT] Could not write on file sent by server!");
-        async_utils::async_print("\t[SYNCWIZARD CLIENT] Could not acess file: \"" + args + "\"!");
+        aprint("\t[SYNCWIZARD CLIENT] Could not write on file sent by server!");
+        aprint("\t[SYNCWIZARD CLIENT] Could not acess file: \"" + args + "\"!");
         return;
     }
     else 
@@ -281,10 +283,10 @@ void Client::server_delete_file_command_(std::string args, packet buffer, std::s
         // user requested file download failed
         std::string output = "\t[SYNCWIZARD CLIENT] User requested ";
         output += "delete command for \"" + args + "\" failed!";
-        async_utils::async_print(output);
+        aprint(output);
         std::string reason = "\t[SYNCWIZARD CLIENT] Captured error:";
         reason += std::string(buffer.payload, buffer.payload_size);
-        async_utils::async_print(reason);
+        aprint(reason);
         return;
     }
 
@@ -305,21 +307,21 @@ void Client::server_delete_file_command_(std::string args, packet buffer, std::s
         }
         send_cv_.notify_one();
         
-        async_utils::async_print("\t[SYNCWIZARD CLIENT] Invalid file path. Delete command ignored.");
+        aprint("\t[SYNCWIZARD CLIENT] Invalid file path. Delete command ignored.");
         return;
     }
     else if(args == "fail")
     {
         // previously user-sent delete command request failed
         std::string output = "\t[SYNCWIZARD CLIENT] Server could not process malformed delete command!";
-        async_utils::async_print(output);
+        aprint(output);
         
         // if a rejection reason was given, print it
         if(buffer.payload_size > 0)
         {
             output = "\t[SYNCWIZARD CLIENT] Server rejected delete command with: ";
             output += std::string(buffer.payload, buffer.payload_size);
-            async_utils::async_print(output);
+            aprint(output);
         }
         return;
     }
@@ -345,7 +347,7 @@ void Client::server_delete_file_command_(std::string args, packet buffer, std::s
         {
             std::string output = "\t[SYNCWIZARD CLIENT] Exception raised while deleting file: ";
             output += std::string(e.what());
-            async_utils::async_print(output);
+            aprint(output);
 
             // sends fail packet to server
             packet fail_packet;
@@ -377,10 +379,10 @@ void Client::server_async_upload_command_(std::string args, std::string checksum
         // user requested file download failed
         std::string output = "\t[SYNCWIZARD CLIENT] User requested";
         output += " file async download for \"" + args + "\" failed!";
-        async_utils::async_print(output);
+        aprint(output);
         std::string reason = "\t[SYNCWIZARD CLIENT] Captured error:";
         reason += std::string(buffer.payload, buffer.payload_size);
-        async_utils::async_print(reason);
+        aprint(reason);
         return;
     }
 
@@ -404,8 +406,8 @@ void Client::server_async_upload_command_(std::string args, std::string checksum
         }
         send_cv_.notify_one();
 
-        async_utils::async_print("\t[SYNCWIZARD CLIENT] Could not write on file sent by server!");
-        async_utils::async_print("\t[SYNCWIZARD CLIENT] Could not acess file: \"" + args + "\"!");
+        aprint("\t[SYNCWIZARD CLIENT] Could not write on file sent by server!");
+        aprint("\t[SYNCWIZARD CLIENT] Could not acess file: \"" + args + "\"!");
         return;
     }
     else 
@@ -451,11 +453,11 @@ void Client::server_async_upload_command_(std::string args, std::string checksum
 void Client::server_exit_command_(std::string reason)
 {
     // received logout confirmation from server
-    async_utils::async_print("\t[SYNCWIZARD CLIENT] Logout requested by server!");
+    aprint("\t[SYNCWIZARD CLIENT] Logout requested by server!");
 
     if(reason.size() > 0)
     {
-        async_utils::async_print("\t[SYNCWIZARD CLIENT] Logout reason:" + reason);
+        aprint("\t[SYNCWIZARD CLIENT] Logout reason:" + reason);
     }
 
     if(inotify_.is_running() == true)
@@ -473,5 +475,5 @@ void Client::server_malformed_command_(std::string command)
     // invalid command request recieved from server
     std::string output = "\t[SYNCWIZARD CLIENT] Received malformed \"";
     output += command + "\" command from server!";
-    async_utils::async_print(output);
+    aprint(output);
 }

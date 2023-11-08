@@ -10,8 +10,11 @@
 
 // locals
 #include "../include/common/cxxopts.hpp"
+#include "../include/common/async_cout.hpp"
 #include "../include/common/utils.hpp"
 #include "client_app.hpp"
+
+using namespace async_cout;
 
 struct termios old_settings, new_settings;
 void cleanup(int signal)
@@ -19,7 +22,7 @@ void cleanup(int signal)
 	tcsetattr(STDIN_FILENO, TCSANOW, &old_settings);
 	std::cout << "\n\n[CLEANUP] Restored terminal to cooked mode..." << std::endl;
 
-	async_utils::stop_capture();
+	async_cout::stop_capture();
 	std::exit(signal);
 }
 
@@ -33,7 +36,7 @@ int main(int argc, char* argv[])
     new_settings.c_lflag &= ~(ICANON | ECHO);
     tcsetattr(STDIN_FILENO, TCSANOW, &new_settings);
 	std::signal(SIGINT, cleanup);
-	async_utils::start_capture();
+	async_cout::start_capture();
 
     // main attributes
     std::string username;

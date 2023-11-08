@@ -16,10 +16,12 @@
 
 // locals
 #include "user_interface.hpp"
+#include "async_cout.hpp"
 #include "utils.hpp"
 
 // namespaces
 using namespace user_interface;
+using namespace async_cout;
 
 UserInterface::UserInterface(
     std::mutex* mutex,
@@ -54,10 +56,10 @@ void UserInterface::start()
             // incorrect usage of the start method
             throw std::runtime_error("\t[USER INTERFACE] Incorrect usage of method start()!");
         }
-        async_utils::async_print("\t[USER INTERFACE] disabling charater echo...");
+        aprint("\t[USER INTERFACE] disabling charater echo...");
         disable_echo();
 
-        async_utils::async_print("\t[USER INTERFACE] initializing...");
+        aprint("\t[USER INTERFACE] initializing...");
 
         // sets thread control variable to running
         running_ = true;
@@ -72,11 +74,11 @@ void UserInterface::start()
     }
     catch(const std::exception& e)
     {
-        async_utils::async_print("\t[USER INTERFACE] Error initializing: " + std::string(e.what()));
+        aprint("\t[USER INTERFACE] Error initializing: " + std::string(e.what()));
     }
     catch(...)
     {
-        async_utils::async_print("\t[USER INTERFACE] Unknown error initializing!");
+        aprint("\t[USER INTERFACE] Unknown error initializing!");
     }
     
 }
@@ -90,7 +92,7 @@ void UserInterface::stop()
 
     running_ = false;
     stop_requested_.store(true);
-    async_utils::async_print("\t[USER INTERFACE] Flags set to stop!");
+    aprint("\t[USER INTERFACE] Flags set to stop!");
 }
 
 void UserInterface::input_loop()
@@ -112,8 +114,8 @@ void UserInterface::input_loop()
             }
 
         
-            *command_buffer_ = async_utils::get_buffer();
-            //async_utils::async_print("[UI]" + command_buffer_);
+            *command_buffer_ = get_buffer();
+            //aprint("[UI]" + command_buffer_);
             
             std::istringstream iss(*command_buffer_);
             std::string token;
@@ -129,12 +131,12 @@ void UserInterface::input_loop()
     }
     catch(const std::exception& e)
     {
-        async_utils::async_print("\t[USER_INTERFACE] Error occured on main_loop(): " + std::string(e.what()));
+        aprint("\t[USER_INTERFACE] Error occured on main_loop(): " + std::string(e.what()));
         throw std::runtime_error(e.what());
     }
     catch(...)
     {
-        async_utils::async_print("\t[USER_INTERFACE] Unknown error occured on main_loop()!");
+        aprint("\t[USER_INTERFACE] Unknown error occured on main_loop()!");
         throw std::runtime_error("[USER_INTERFACE] Unknown error occured on main_loop()!");
     }
 }
