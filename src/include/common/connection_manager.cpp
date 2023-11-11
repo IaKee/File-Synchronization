@@ -167,6 +167,12 @@ void ConnectionManager::close_socket()
 
 void ConnectionManager::send_data(char* buffer, std::size_t buffer_size, int sockfd, int timeout)
 {
+    if(buffer_size == 0)
+    {
+        // nothing to send
+        return;
+    }
+
     int socket;
     if(sockfd == -1)
     {
@@ -195,7 +201,6 @@ void ConnectionManager::send_data(char* buffer, std::size_t buffer_size, int soc
     FD_SET(socket, &write_fds);
 
     int result = select(socket + 1, nullptr, &write_fds, nullptr, &send_timeout);
-    
     if(result == -1) 
     {
         throw std::runtime_error("[CONNECTION MANAGER] Error sending buffer on socket " + std::to_string(socket) + "!");
@@ -224,6 +229,12 @@ void ConnectionManager::send_data(char* buffer, std::size_t buffer_size, int soc
 
 void ConnectionManager::receive_data(char* buffer, std::size_t buffer_size, int sockfd, int timeout)
 {
+    if(buffer_size == 0)
+    {
+        // nothing to receive
+        return;
+    }
+    
     int socket;
     if(sockfd == -1)
     {
@@ -291,9 +302,12 @@ void ConnectionManager::send_packet(const packet& p, int sockfd, int timeout)
     
     std::memcpy(header_buffer, &p, sizeof(packet) - sizeof(char*));
 
-    aprint("sending something:" + std::to_string(sizeof(header_buffer)));
+    // TODO: remove this
+    aprint("sending a packet:" + std::to_string(sizeof(header_buffer)) + " with the command:" + p.command);
+    
     send_data(header_buffer, sizeof(header_buffer), sockfd, timeout);
 
+    // sends the payload part of the packet
     if (p.payload_size > 0)
     {
         send_data(p.payload, p.payload_size, sockfd, timeout);
@@ -305,14 +319,15 @@ void ConnectionManager::receive_packet(packet& p, int sockfd, int timeout)
 {
     char header_buffer[sizeof(packet) - sizeof(char*)];
 
+    // tries to receive packet
     receive_data(header_buffer, sizeof(header_buffer), sockfd, timeout);
 
     std::memcpy(&p, header_buffer, sizeof(packet) - sizeof(char*));
 
+    // receives the payload
     if (p.payload_size > 0)
     {
         p.payload = new char[p.payload_size];
-
         receive_data(p.payload, p.payload_size, sockfd, timeout);
     }
     else

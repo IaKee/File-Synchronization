@@ -94,9 +94,11 @@ Client::Client(
         // tries to connect to server
         aprint("\t[SYNCWIZARD CLIENT] Attempting connection to server...");
         connection_manager_.connect_to_server(server_address, server_port);
-        
+
         // after being connected tries to send login request
+        aprint("\t[SYNCWIZARD CLIENT] Logging in..." + std::to_string(connection_manager_.get_receive_timeout()) + std::to_string(connection_manager_.get_send_timeout()));
         session_id_ = connection_manager_.login(username_, machine_name_);
+        aprint("\t[SYNCWIZARD CLIENT] Got following session id: " + std::to_string(session_id_));
 
         // sets running flag to true
         running_app_.store(true);
@@ -158,18 +160,18 @@ void Client::start_sync_(std::string new_path)
         {
             std::string output = "[CLIENT APP] Deleted " + std::to_string(deleted_sync_temp_files);
             output += " incomplete download files from the sync dir.";
-            aprint(output)
+            aprint(output);
         }
         else
         {
             std::string output = "[CLIENT APP] No incomplete files were found on the sync dir.";
-            aprint(output)
+            aprint(output);
         }
         if(deleted_async_temp_files > 0)
         {
             std::string output = "[CLIENT APP] Deleted " + std::to_string(deleted_sync_temp_files);
             output += " incomplete download files from the async dir.";
-            aprint(output)
+            aprint(output);
         }
         else
         {
@@ -184,12 +186,12 @@ void Client::start_sync_(std::string new_path)
         inotify_.start_watching();
         
         aprint("\t[SYNCWIZARD CLIENT] Synchronization routine initialized!");
-        break;
+        return;
     }
     else
     {
         aprint("\t[SYNCWIZARD CLIENT] Synchronization routine is already running!");
-        break;
+        return;
     }
 
     // starts synchronization routine, setting the new sync_dir path if needed

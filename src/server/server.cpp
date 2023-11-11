@@ -54,13 +54,13 @@ Server::Server()
 	internet_manager.create_socket();
 
 	// set defaut port
-	int new_port = 65535 + 1;
+	int new_port = 65535;
 	bool port_avaiable = false;
 
 	// chooses a port that is avaiable by testing them
-	while(port_avaiable == false && new_port < 50000)
+	while(port_avaiable == false && new_port > 50000)
 	{
-		new_port--;
+		new_port -= 1;
 		port_avaiable = internet_manager.is_port_available(new_port);
 	}
 	internet_manager.set_port(new_port);
@@ -185,6 +185,7 @@ void Server::handle_new_session(int new_socket, std::string username, std::strin
 				aprint("\t[SYNCWIZARD SERVER] creating new session...");
 				
 				// creates new session instance
+				// sends references to the general send/receive methods by reference
 				std::unique_ptr<client_connection::ClientSession> created_session = 
 					std::make_unique<client_connection::ClientSession>(
 						new_socket,

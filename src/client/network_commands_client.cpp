@@ -362,7 +362,7 @@ int Client::delete_temporary_download_files_(std::string directory)
             if(fs::is_regular_file(entry) && entry.path().extension() == ".swizdownload") 
             {
                 fs::remove(entry);
-                delete_file += 1;
+                deleted_files += 1;
             }
             else if(fs::is_directory(entry)) 
             {
@@ -374,7 +374,9 @@ int Client::delete_temporary_download_files_(std::string directory)
                 }
                 else
                 {
-                    aprint("[SYNCWIZARD CLIENT] Could not delete any temporary files on \"" + entry.path() + "\"");
+                    std::string eoutput = "[SYNCWIZARD CLIENT] Could not delete any temporary files on \"";
+                    eoutput += std::string(entry.path()) + "\"";  
+                    aprint(eoutput);
                 }
             }
         }

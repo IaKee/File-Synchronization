@@ -113,8 +113,7 @@ void Client::process_user_interface_commands_()
             {
                 aprint("\t[SYNCWIZARD CLIENT] Starting synchronization routine...");
 
-                // first gets rid of any temporary download files
-                this->delete_temporary_download_files_();
+                // temporary files are cleaned on startup
 
                 // requests server to start file synchronization methods
                 // TODO: this

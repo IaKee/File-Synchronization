@@ -12,7 +12,7 @@ using namespace async_cout;
 ClientConnectionManager::ClientConnectionManager()
     :   is_connected_(false)
 {
-
+    // initialization here
 }
 
 void ClientConnectionManager::connect_to_server(std::string address, int port) 
@@ -55,40 +55,67 @@ int ClientConnectionManager::login(std::string username, std::string machine_nam
 
     try
     {
-        // mounts and sends login string
+        // mounts and sends login command packet
         std::string login_command = "login|" + username + "|" + machine_name;
-
         packet login_packet;
         strcharray(login_command, login_packet.command, sizeof(login_packet.command));
-        this->send_packet(login_packet, get_sock_fd());
+        
+        {
+            std::unique_lock<std::mutex> lock(send_mtx_);
+            this->send_packet(login_packet, get_sock_fd());
+        }
     }
     catch(const std::exception& e)
     {
-        throw std::runtime_error("[CLIENT CONNECTION MANAGER] Could not send login request: \n\t\t" + std::string(e.what()));
+        std::string eoutput = "[CLIENT CONNECTION MANAGER] Could not send login request:\n\t\t";
+        eoutput += std::string(e.what());
+        throw std::runtime_error(eoutput);
     }
     
     try
     {
         // receives and unpacks login confirmation
         packet login_confirmation;
-        this->receive_packet(login_confirmation, get_sock_fd());
-
-        std::vector<std::string> sanitized_payload = split_buffer(login_confirmation.payload);
-        
-        if(sanitized_payload[0] == "login" && sanitized_payload[1] == "ok")
         {
-            aprint("[CLIENT CONNECTION MANAGER] Login approved!");
-            return std::stoi(sanitized_payload[2]);;
+            std::unique_lock<std::mutex> lock(receive_mtx_);
+            this->receive_packet(login_confirmation, get_sock_fd());
         }
-        else
+
+        std::vector<std::string> sanitized_payload = split_buffer(login_confirmation.command);
+        std::string command = sanitized_payload[0];
+        std::string status = sanitized_payload[1];
+
+        if(command == "login")
         {
-            std::string login_response(login_confirmation.payload, login_confirmation.payload_size);
-            throw std::runtime_error("[CLIENT CONNECTION MANAGER] Malformed login response: " + login_response);
+            if(status == "ok")
+            {
+                std::string session_sid = sanitized_payload[2];
+                int session_id = std::stoi(session_sid);
+                aprint("[CLIENT CONNECTION MANAGER] Login approved on session " + session_sid + "!");
+                return session_id;
+            }
+            else if(status == "fail")
+            {
+                std::string reason = charraystr(login_confirmation.payload, login_confirmation.payload_size);
+                throw std::runtime_error("[CLIENT CONNECTION MANAGER] Login refused! " + reason);
+            }
+            else
+            {
+                throw std::runtime_error("[CLIENT CONNECTION MANAGER] Unknown login command status!");
+            }
+        }
+        else        
+        {
+            std::string eoutput = "[CLIENT CONNECTION MANAGER] Unknown command!";
+            eoutput += "Expected \'login\', but got \'" + command + "\'!";
+            throw std::runtime_error(eoutput);
         }
     }
     catch(const std::exception& e)
     {
-        throw std::runtime_error("[CLIENT CONNECTION MANAGER] Login was not approved: \n\t\t" + std::string(e.what()));
+        std::string eoutput = "[CLIENT CONNECTION MANAGER] A critical error occured while loggin in: ";
+        eoutput += std::string(e.what());
+        throw std::runtime_error(eoutput);
     }
     
 }

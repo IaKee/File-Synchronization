@@ -105,7 +105,7 @@ void ServerConnectionManager::server_accept_loop(
             timeval read_timeout;
             read_timeout.tv_sec = this->get_receive_timeout();
             read_timeout.tv_usec = 0;
-
+            
             // waits for updates on the socket or the signal pipe
             int result = select(max_fd + 1, &temp_fds, nullptr, nullptr, &read_timeout);
             
@@ -120,11 +120,10 @@ void ServerConnectionManager::server_accept_loop(
                     {
                         aprint("\t[SERVER CONNECTION MANAGER] Got a new connection request...");
                         
-                        // connection stablished, tries to recieve identification from the new user
                         try
                         {
+                            // connection stablished, tries to recieve identification from the new user
                             packet accept_packet;
-
                             {
                                 std::unique_lock<std::mutex> lock(receive_mtx_);
                                 receive_packet(accept_packet, new_socket);
@@ -133,20 +132,28 @@ void ServerConnectionManager::server_accept_loop(
                             // decodes string into argument list
                             std::vector<std::string> sanitized_payload = split_buffer(accept_packet.command);
 
-                            // checks for invalid argument number
+                            // verifies argument number
                             if(sanitized_payload.size() != 3)
                             {
+                                std::string output = "\t[SERVER CONNECTION MANAGER] Connection refused!";
+                                output += " Invalid argument number! Sending refuse packet...";
+                                aprint(output);
+                                
                                 packet refusal_packet;
+                                    
+                                // fills packet command
                                 std::string command_response = "login|fail";
                                 strcharray(command_response, refusal_packet.command, sizeof(refusal_packet.command));
+                                    
+                                // fills packet payload
                                 std::string args_response = "Malformed login command, invalid argument number";
                                 strcharray(args_response, refusal_packet.payload, args_response.size());
                                 refusal_packet.payload_size = args_response.size();
-                                this->send_packet(refusal_packet, new_socket);
-
-                                std::string output = "\t[SERVER CONNECTION MANAGER] Connection refused!";
-                                output += " Invalid argument number!";
-                                aprint(output);
+                                    
+                                {
+                                    std::unique_lock<std::mutex> lock(send_mtx_);
+                                    this->send_packet(refusal_packet, new_socket);
+                                }
 
                                 close(new_socket);
 
@@ -154,31 +161,34 @@ void ServerConnectionManager::server_accept_loop(
                                 continue;
                             }
 
+                            // while having the correct argument number
+                            // decodes them and ensures validity
                             std::string command = sanitized_payload[0];
                             std::string username = sanitized_payload[1];
                             std::string machine_name = sanitized_payload[2];
+                            bool valid_connection = is_valid_username(username);
 
-                            if(is_valid_username(username))
+                            // tries to approve connection, after validating
+                            if(valid_connection)
                             {
                                 try
                                 {
                                     // adds new session to internal session vector
                                     connection_stablished_callback(new_socket, username, machine_name);
 
-                                    std::string output = "\t[SERVER CONNECTION MANAGER] User " + username;
-                                    output += " joined with a new session on " + machine_name + "!";
-                                    aprint(output);
-                                    
+                                    // mounts and sends a packet approving the login request
                                     packet approval_packet;
                                     std::string command_response = "login|ok|" + new_socket;
                                     strcharray(command_response, approval_packet.command, sizeof(approval_packet.command));
-
+                                    
                                     {
-                                        std::unique_lock<std::mutex> lock(receive_mtx_);
+                                        std::unique_lock<std::mutex> lock(send_mtx_);
                                         this->send_packet(approval_packet, new_socket);
                                     }
 
-                                    //close(new_socket);  // remove this
+                                    std::string output = "\t[SERVER CONNECTION MANAGER] User " + username;
+                                    output += " joined with a new session on " + machine_name + "!";
+                                    aprint(output);
 
                                     // goes to the next loop iteraction
                                     continue;
@@ -192,11 +202,17 @@ void ServerConnectionManager::server_accept_loop(
                                     packet refusal_packet;
                                     std::string command_response = "login|fail";
                                     strcharray(command_response, refusal_packet.command, sizeof(refusal_packet.command));
+                                    
                                     std::string args_response = "Exception ocurred registring new user:";
                                     args_response += std::string(e.what());
                                     strcharray(args_response, refusal_packet.payload, args_response.size());
                                     refusal_packet.payload_size = args_response.size();
-                                    this->send_packet(refusal_packet, new_socket);
+                                    
+                                    {
+                                        std::unique_lock<std::mutex> lock(send_mtx_);
+                                        this->send_packet(refusal_packet, new_socket);
+                                    }
+                                    
                                     close(new_socket);
 
                                     // goes to the next loop iteraction

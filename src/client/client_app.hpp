@@ -103,7 +103,7 @@ namespace client_app
             void upload_command_(std::string args, std::string reason = "");
             void pong_command_();
             void list_command_(std::string args);
-            void delete_temporary_download_files_(std::string directory);
+            int delete_temporary_download_files_(std::string directory);
             void malformed_command_(std::string command);
 
         public:
