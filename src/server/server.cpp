@@ -37,17 +37,17 @@ Server::Server()
 {
 	// init sequence
 	std::string machine_name = get_machine_name();
-	aprint("\t[SYNCWIZARD SERVER] Initializing at " + machine_name + "...");
+	aprint("Initializing at " + machine_name + "...");
 
 	if(!is_valid_path(sync_dir_))
 	{
 		if(!create_directory(sync_dir_))
 		{
-			throw std::runtime_error("\t[SYNCWIZARD SERVER] Could not create sync_dir directory! Please check system permissions!");
+			throw std::runtime_error("Could not create sync_dir directory! Please check system permissions!");
 		}
 		else
 		{
-			aprint("\t[SYNCWIZARD SERVER] Initializing server (root) files directory...");
+			aprint("Initializing server (root) files directory...");
 		}
 	}
 	
@@ -69,8 +69,13 @@ Server::Server()
 
 	std::string addr = internet_manager.get_address();
 	int port = internet_manager.get_port();
-	aprint("[STARTUP] Server running at " + addr + ":" + 
-		std::to_string(port) + "(" + std::to_string(internet_manager.get_sock_fd()) + ")");
+	aprint("Server running at " 
+		+ addr 
+		+ ":" 
+		+ std::to_string(port) 
+		+ "(" 
+		+ std::to_string(internet_manager.get_sock_fd()) 
+		+ ")");
 	
 	S_UI_.start();
 };
@@ -104,11 +109,11 @@ void Server::start()
 	}
 	catch(const std::exception& e)
 	{
-		throw std::runtime_error("[SYNCWIZARD SERVER] Error occured on start():\n\t" + std::string(e.what()));
+		raise("Error occured on start():\n\t" + std::string(e.what()));
 	}
 	catch(...)
 	{
-		throw std::runtime_error("[SYNCWIZARD SERVER] Unknown error occured on start()!");
+		raise("Unknown error occured on start()!");
 	}
 }
 
@@ -117,7 +122,7 @@ void Server::stop()
 	// stop user interface and command processing
 	try
 	{
-		aprint("\t[SYNCWIZARD SERVER] Closing, please wait...");
+		aprint("Closing, please wait...");
 
 		stop_requested_.store(true);
 		running_.store(false);
@@ -130,16 +135,16 @@ void Server::stop()
 	}
 	catch(const std::exception& e)
 	{
-		aprint("\t[SYNCWIZARD SERVER] Error occured on stop(): " + std::string(e.what()));
+		aprint("Error occured on stop(): " + std::string(e.what()));
 		throw std::runtime_error(e.what());
 	}
 	catch(...)
 	{
-		aprint("\t[SYNCWIZARD SERVER] Unknown error occured on stop()!");
+		aprint("Unknown error occured on stop()!");
 		throw std::runtime_error("Unknown error occured on stop()!");
 	}
 
-	aprint("\t[SYNCWIZARD SERVER] Main components closed!");
+	aprint("Main components closed!");
 }
 
 void Server::close()
@@ -158,31 +163,32 @@ void Server::handle_new_session(int new_socket, std::string username, std::strin
 		if(new_user == nullptr)
 		{
 			// session is from a new user, add to the list
-			aprint("\t[SYNCWIZARD SERVER] loading user...");
+			aprint("Loading new session's user files...");
 			client_manager_.load_user(username);
 
 			// tries to retrieve newly added user
-			aprint("\t[SYNCWIZARD SERVER] checking loaded user...");
+			aprint("Verifying loaded user user...");
 			new_user = client_manager_.get_user(username);
 
 			if(new_user == nullptr)
 			{
-				throw std::runtime_error("[SYNCWIZARD SERVER] User was wrongly or not added to the user manager!");
+				raise("User was wrongly or not added to the user manager!");
 			}
 		}
 		
+		aprint("Checking for existing sessions...");
 		int active_sessions = new_user->get_active_session_count();
 		int session_limit = 2;
 
 		if(active_sessions < session_limit)
 		{
 			// checks if there is already a session on the given socket
-			aprint("\t[SYNCWIZARD SERVER] checking if session exists...");
+			aprint("Checking for duplicate sessions...");
 			client_connection::ClientSession* new_session = new_user->get_session(new_socket);
 
 			if(new_session == nullptr)
 			{	
-				aprint("\t[SYNCWIZARD SERVER] creating new session...");
+				aprint("Creating a new session...");
 				
 				// creates new session instance
 				// sends references to the general send/receive methods by reference
@@ -205,7 +211,8 @@ void Server::handle_new_session(int new_socket, std::string username, std::strin
 							new_user->broadcast_other_sessions(caller_sockfd, p);
 						});
 
-				std::string output = "\t[SYNCWIZARD SERVER] " + created_session->get_identifier();
+				// TODO: remove this
+				std::string output = created_session->get_identifier();
 				output += " session added! Force starting synchronization protocol.";
 
 				// hack to force start the synchronization
@@ -217,27 +224,26 @@ void Server::handle_new_session(int new_socket, std::string username, std::strin
 				// adds new session to the user manager
 				new_user->add_session(created_session.release());
 				
-				output = "\t[SYNCWIZARD SERVER] " + created_session->get_identifier();
-				output += " logged in!";
+				output = created_session->get_identifier() + "logged in!";
 			}
 			else
 			{
-				throw std::runtime_error("\t[SYNCWIZARD SERVER] Session already logged in?");
+				raise("Session already logged in?");
 			}
 		}
 		else
 		{
-			throw std::runtime_error("[SYNCWIZARD SERVER] User already has 2 sessions connected!");
+			raise("User already has 2 sessions connected!");
 		}
 		
     }
     catch(const std::exception& e)
     {
-		throw std::runtime_error("[SYNCWIZARD SERVER] Exception occurred while processing new session: \n\t\t" + std::string(e.what()));
+		raise("Exception occurred while processing new session: \n\t\t" + std::string(e.what()));
     }
     catch(...)
     {
-		throw std::runtime_error("[SYNCWIZARD SERVER] Unknown exception occurred while processing new session!");
+		raise("Unknown exception occurred while processing new session!");
     }
 }
 
@@ -258,7 +264,7 @@ void Server::process_input()
 			}
 			else
 			{
-				aprint("\t[SYNCWIZARD SERVER] Could not find a command by \"" + ui_buffer + "\"!");
+				aprint("Could not find a command by \"" + ui_buffer + "\"!");
 			}
 			break;
 		case 2:
@@ -267,7 +273,7 @@ void Server::process_input()
 				if(ui_sanitized_buffer.back() == "clients")
 				{
 					std::list<std::string> connected = client_manager_.list_users();
-					std::string output = "\t[SYNCWIZARD SERVER] Currently these users are connected:";
+					std::string output = "Currently these users are connected:";
 					for(std::string s : connected)
 					{
 						output += "\n\t\t-> " + s;
@@ -276,23 +282,23 @@ void Server::process_input()
 				}
 				else
 				{
-					aprint("\t[SYNCWIZARD SERVER] Could not find a command by \"" + ui_buffer + "\"!");
+					aprint("Could not find a command by \"" + ui_buffer + "\"!");
 				}
 			}
 			else
 			{
-				aprint("\t[SYNCWIZARD SERVER] Could not find a command by \"" + ui_buffer + "\"!");
+				aprint("Could not find a command by \"" + ui_buffer + "\"!");
 			}
 			break;
 		default:
-			aprint("\t[SYNCWIZARD SERVER] Could not find a command by \"" + ui_buffer + "\"!");
+			aprint("Could not find a command by \"" + ui_buffer + "\"!");
 			break;
 	}
 }
 
 void Server::main_loop()
 {
-	aprint("\t[SYNCWIZARD SERVER] Starting up server main loop...");
+	aprint("Starting up server main loop...");
 	try
 	{
 		while(running_)
@@ -313,7 +319,7 @@ void Server::main_loop()
 			if(stop_requested_.load() == true)
 			{
 				ui_cv.notify_one();
-				aprint("\t[SYNCWIZARD SERVER] Main loop terminated!");
+				aprint("Main loop terminated!");
 				return;
 			}
 			
@@ -327,16 +333,24 @@ void Server::main_loop()
 			ui_cv.notify_one();
 			
 		}
-		aprint("\t[SYNCWIZARD SERVER] Main loop terminated!");
+		aprint("Main loop terminated!");
 	}
 	catch (const std::exception& e)
 	{
-		aprint("\t[SYNCWIZARD SERVER] Error occured on main_loop(): ");
-		throw std::runtime_error(e.what());
+		raise("Error occured on main_loop(): " + std::string(e.what()));
 	}
 	catch (...) 
 	{
-		aprint("\t[SYNCWIZARD SERVER] Unknown error occured on main_loop()!");
-		throw std::runtime_error("Unknown error occured on main_loop()");
+		raise("Unknown error occured on main_loop()");
 	}
+}
+
+void server::aprint(std::string content, bool endl)
+{
+	print(content, "syncwizard server", 1, -1, 1, endl);
+}
+
+void server::raise(std::string error)
+{
+	throw std::runtime_error("[SYNCWIZARD SERVER] " + error);
 }

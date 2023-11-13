@@ -2,7 +2,6 @@
 client: 
 	g++ -o client src/client/*.cpp src/include/common/*.cpp -lcryptopp -lpthread
 
-
 # Compile server source files into an executable named 'server'
 server:
 	g++ -o server src/server/*.cpp src/include/common/*.cpp -lcryptopp -lpthread

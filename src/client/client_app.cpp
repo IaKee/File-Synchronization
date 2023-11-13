@@ -127,9 +127,8 @@ void Client::start_sync_(std::string new_path)
     // initializes synchronization process on client, informs server
     // by sending "clist" command to server
     // it is impled that client is requesting file updates on both ends
-
     // sync dir path is optional
-
+    
     if(running_sync_.load() == false)
     {
         // checks if the download directories were previously set
@@ -300,4 +299,14 @@ void Client::close()
 {
     // closes remaining threads
     UI_.input_thread_.join();
+}
+
+void aprint(std::string content, int scope, bool endl)
+{
+
+}
+
+void raise(std::string error)
+{
+
 }

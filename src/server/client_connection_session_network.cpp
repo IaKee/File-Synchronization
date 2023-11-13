@@ -44,7 +44,7 @@ void ClientSession::session_receiver_loop()
         
         if (running_receiver_.load() == false)
         {
-            aprint("[SESSION NETWORK MANAGER] Stopping sender...");
+            aprint("Stopping sender...", 3);
             return;
         }
 
@@ -195,9 +195,9 @@ void ClientSession::session_receiver_loop()
         }
         catch(const std::exception& e)
         {
-            std::string output = "\t[SESSION NETWORK MANAGER] " + get_identifier();
-            output += " Error receiving data: " + std::string(e.what());
-            throw std::runtime_error(output);
+            std::string output = get_identifier() + " Error receiving data: ";
+            output += std::string(e.what());
+            raise(output, 2);
         }
     }
 }
@@ -394,7 +394,8 @@ void ClientSession::session_sender_loop()
         }
         catch(const std::exception& e)
         {
-            throw std::runtime_error("[SESSION NETWORK MANAGER] Exception occured while running send: " + std::string(e.what()));
+            std::string output = "Exception occured while running send: " + std::string(e.what());
+            raise(output, 2);
         }
 
         send_cv_.notify_one();

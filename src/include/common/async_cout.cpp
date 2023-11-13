@@ -5,6 +5,7 @@
 #include <thread>
 #include <condition_variable>
 #include <atomic>
+#include <algorithm>
 
 // standard c
 #include <ctype.h>
@@ -31,7 +32,116 @@ std::condition_variable input_cv;
 std::atomic<bool> capturing = false;
 std::thread capture_th;
 
-void async_cout::aprint(std::string content, bool endl)
+void async_cout::print(std::string content, std::string module_name, int indent, int fg, int bg, bool endl)
+{
+    // string modifier for color coding module names
+    bool has_modifier = false;
+    std::string string_starter = "";
+    std::string string_ender = "\033[0m";
+    std::string new_string = "";
+    
+    if(bg >= 0)
+    {
+        std::string BACKGROUND_COLORS[] = 
+        {
+            "\033[48;5;231m",  // white
+            "\033[48;5;196m",  // red
+            "\033[48;5;40m",   // green
+            "\033[48;5;51m",   // blue
+            "\033[48;5;226m",  // yellow
+            "\033[48;5;21m",   // magenta
+            "\033[48;5;27m",   // cyan
+            "\033[48;5;124m"   // orange
+        };
+
+        try
+        {
+            std::string chosen_color = BACKGROUND_COLORS[bg];
+            string_starter += chosen_color;
+            has_modifier = true;
+        }
+        catch(const std::exception& e)
+        {
+            string_starter += "[invalid bg] ";
+        }
+        
+    }
+
+    if(fg >= 0)
+    {
+        std::string FOREGROUND_COLORS[] = 
+        {
+            "\033[38;5;0m",   // black
+            "\033[38;5;15m",  // white
+            "\033[38;5;255m", // whitest
+            "\033[38;5;202m", // bright red
+            "\033[38;5;82m",  // bright green
+            "\033[38;5;33m",  // bright blue
+            "\033[38;5;201m", // bright yellow
+            "\033[38;5;129m"  // dark orange
+        };
+
+        try
+        {
+            std::string chosen_color = FOREGROUND_COLORS[fg];
+            string_starter += chosen_color;
+            has_modifier = true;
+        }
+        catch(const std::exception& e)
+        {
+            string_starter += "[invalid fg] ";
+        }
+    }
+
+    if(has_modifier == false)
+    {
+        string_ender = "";
+    }
+
+    // sends string to output
+    {
+        std::lock_guard<std::mutex> alock(cout_mtx);
+        printf("\r\033[K"); // deletes current line
+        
+        if(endl)
+        {
+            content += '\n';
+        }
+        content += "\t#> " + terminal_buffer;
+        
+        if(module_name.size() > 0)
+        {
+            std::transform(
+                module_name.begin(), 
+                module_name.end(), 
+                module_name.begin(), 
+                ::toupper);
+            module_name = "[" + module_name + "]";
+            
+            std::cout 
+                << std::string(indent, ' ') 
+                << string_starter 
+                << module_name 
+                << string_ender
+                << " " 
+                << content 
+                << std::flush;
+        }
+        else
+        {
+            std::cout 
+                << std::string(indent, ' ') 
+                << string_starter 
+                << string_ender 
+                << " "
+                << content 
+                << std::flush;
+        }
+    }    
+
+}
+
+void async_cout::altprint(std::string content, bool endl)
 {
     std::lock_guard<std::mutex> alock(cout_mtx);
 
@@ -56,7 +166,7 @@ std::string async_cout::agets()
     }
 
     // echoes to cout
-    aprint(input);
+    altprint(input);
 
     return input;
 }
@@ -136,14 +246,14 @@ void async_cout::capture_loop()
                         input_buffer.push(terminal_buffer);
                         std::string strtmp = std::string(terminal_buffer);
                         terminal_buffer.clear();
-                        aprint("\t#> " + strtmp);
+                        altprint("\t#> " + strtmp);
                         input_cv.notify_one();
                         break;
                     }
                     case ' ':
                     {
                         add_to_buffer(' ');
-                        aprint("", false);
+                        altprint("", false);
                         break;
                     }
                     case 127:
@@ -151,7 +261,7 @@ void async_cout::capture_loop()
                         if(!terminal_buffer.empty())
                         {
                             backspace_buffer();
-                            aprint("", false);
+                            altprint("", false);
                         }
                         break;
                     }
@@ -160,7 +270,7 @@ void async_cout::capture_loop()
                         if(isalnum(c))
                         {
                             add_to_buffer(c);
-                            aprint("", false);
+                            altprint("", false);
                         }
                         break;
                     }

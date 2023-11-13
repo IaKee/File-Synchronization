@@ -25,24 +25,21 @@ void ClientSession::malformed_command_(std::string command)
 {
     if(command.size() == 0)
     {
-        std::string output = "\t[SESSION COMMANDS MANAGER] " + get_identifier();
-        output += " Recieved empty string as command.";
-        aprint(output);
+        std::string output = get_identifier() + " Received empty string as command.";
+        aprint(output, 2);
     }
     else
     {
-        std::string output = "\t[SESSION COMMANDS MANAGER] " + get_identifier();
-        output += " Recieved malformed command: " + command;
-        aprint(output);
+        std::string output = get_identifier() + " Received malformed command: " + command;
+        aprint(output, 2);
     }
 }
 
 void ClientSession::client_requested_logout_()
 {
     // received logout request from user
-    std::string output = "\t[SESSION COMMANDS MANAGER] " + get_identifier();
-    output += " Requested logoff.";
-    aprint(output);
+    std::string output = get_identifier() + " Requested logoff.";
+    aprint(output, 2);
 
     running_receiver_.store(false);
     running_sender_.store(false);
@@ -71,9 +68,10 @@ void ClientSession::client_responded_ping_()
     auto ping_val = std::chrono::duration_cast<
         std::chrono::microseconds>(ping_end - ping_start_);
     double ping_ms = ping_val.count() / 1000.0; // Em milissegundos
-    std::string output = "\t[SESSION COMMANDS MANAGER]" + get_identifier();
-    output += "Pinged with a response time of " + std::to_string(ping_ms) + "ms.";
-    aprint(output);
+    
+    std::string output = get_identifier() + " Pinged with a response time of ";
+    output += std::to_string(ping_ms) + "ms.";
+    aprint(output, 2);
 }
 
 void ClientSession::client_requested_delete_(std::string args, packet buffer, std::string arg2)
@@ -85,10 +83,9 @@ void ClientSession::client_requested_delete_(std::string args, packet buffer, st
 
     if(!is_valid_path(local_file_path))
     {
-        std::string output = "\t[SESSION COMMANDS MANAGER]" + get_identifier();
-        output += " Delete command for file \"" + file_name;
+        std::string output = get_identifier() + " Delete command for file \"" + file_name;
         output += "\" failed! Could not acess given path!";
-        aprint(output);
+        aprint(output, 2);
 
         // mounts fail packet
         packet fail_packet;
@@ -125,10 +122,9 @@ void ClientSession::client_requested_delete_(std::string args, packet buffer, st
             }
             else
             {
-                std::string output = "\t[SESSION MANAGER] " + get_identifier();
-                output += " Could not find a file mutex for \"";
+                std::string output = get_identifier() + " Could not find a file mutex for \"";
                 output += file_name + "\"!";
-                throw std::runtime_error(output);
+                raise(output, 2);
             }
 
             // after deleting - removes file mutex from internal list
@@ -140,18 +136,16 @@ void ClientSession::client_requested_delete_(std::string args, packet buffer, st
             }
             else
             {
-                std::string output = "\t[SESSION MANAGER] " + get_identifier();
-                output += " Could not find a file mutex for \"";
+                std::string output = get_identifier() + " Could not find a file mutex for \"";
                 output += file_name + "\"!";
-                throw std::runtime_error(output);
+                raise(output, 2);
             }
         }
         catch(const std::exception& e)
         {
-            std::string output = "[SESSION MANAGER] " + get_identifier();
-            output += " Exception raised while deleting file \"" + file_name;
-            output += "\": " + std::string(e.what());
-            throw std::runtime_error(output);
+            std::string output = get_identifier() + + " Exception raised while deleting file \"";
+            output += file_name + "\": " + std::string(e.what());
+            raise(output, 2);
         }
     }
 }
@@ -175,10 +169,8 @@ void ClientSession::client_requested_slist_()
         sender_buffer_.push_back(slist_packet);
     }
 
-    output = "[SESSION COMMANDS MANAGER] " + get_identifier();
-    output += " Sent slist to session.";
-    aprint(output);
-    return;
+    output = get_identifier() + " Sent slist to session.";
+    aprint(output, 2);
 }
 
 void ClientSession::client_requested_flist_()
@@ -187,9 +179,8 @@ void ClientSession::client_requested_flist_()
     DIR* dir = opendir(directory_path_.c_str());
     if(dir == nullptr) 
     {
-        std::string output = "[SESSION MANAGER] " + get_identifier();
-        output += " Could not acess user folder!";
-        throw std::runtime_error(output);
+        std::string output = get_identifier() + " Could not acess user folder!";
+        raise(output, 2);
     }
 
     // main output string
@@ -200,9 +191,9 @@ void ClientSession::client_requested_flist_()
         DIR* dir = opendir(current_path.c_str());
         if(dir == nullptr) 
         {
-            std::string output = "[SESSION MANAGER] " + get_identifier();
-            output += " Could not acess \"" + current_path + "\" user folder!";
-            throw std::runtime_error(output);
+            std::string output = get_identifier() + " Could not acess \"";
+            output += current_path + "\" user folder!";
+            raise(output, 2);
         }
 
         dirent* entry;
@@ -260,10 +251,8 @@ void ClientSession::client_requested_flist_()
         sender_buffer_.push_back(flist_packet);
     }
 
-    output = "[SESSION COMMANDS MANAGER] " + get_identifier();
-    output += " Sent flist to session.";
-    aprint(output);
-    return;
+    output = get_identifier() + " Sent file list to session.";
+    aprint(output, 2);
 }
 
 void ClientSession::client_requested_adownload_(std::string args)
@@ -290,11 +279,9 @@ void ClientSession::client_requested_adownload_(std::string args)
         }
         send_cv_.notify_one();
 
-        std::string output = "\t[SESSION COMMANDS MANAGER]" + get_identifier();
-        output += " Async download failed! Could not acess given file: ";
+        std::string output = get_identifier() + " Async download failed! Could not acess given file: ";
         output += "\"" + args + "\"!";
-        aprint(output);
-        return;
+        aprint(output, 2);
     }
 
     // requests file lock
@@ -307,9 +294,8 @@ void ClientSession::client_requested_adownload_(std::string args)
 
         if(!sfile.is_open()) 
         {
-            std::string output = "\t[SESSION MANAGER] " + get_identifier();
-            output += " Server could not bufferize file to send: " + args;
-            aprint(output);
+            std::string output = get_identifier() + " Server could not bufferize file to send: " + args;
+            aprint(output, 2);
             
             // mounts packet
             packet fail_packet;
@@ -384,9 +370,8 @@ void ClientSession::client_requested_adownload_(std::string args)
     else
     {
         // if there is no mutex for this file, an error has occured!
-        std::string output = "\n[SESSION COMMANDS MANAGER] " + get_identifier();
-        output += " No file mutex was found for file \"" + args + "\"!";
-        aprint(output);
+        std::string output = get_identifier() + " No file mutex was found for file \"" + args + "\"!";
+        aprint(output, 2);
         return;
     }
 }
@@ -401,9 +386,8 @@ void ClientSession::client_sent_clist_(packet buffer, std::string args)
     if(args == "fail")
     {
         // client could not retrieve listed files
-        std::string output = "\t[SESSION COMMANDS MANAGER] " + get_identifier();
-        output += " Client could not retrieve synchronized files";
-        aprint(output);
+        std::string output = get_identifier() + " Client could not retrieve synchronized files";
+        aprint(output, 2);
     }
 
     // session files
@@ -498,10 +482,11 @@ void ClientSession::client_sent_clist_(packet buffer, std::string args)
         }
     }
 
-    int diff = files_not_in_session.size() + files_not_in_current_server.size();
-    std::string output = "\t[SESSION MANAGER] " + get_identifier();
-    output += "Currently there's a difference of " + std::to_string(diff) + "files.";
+    int file_diff = files_not_in_session.size() + files_not_in_current_server.size();
+    std::string output = get_identifier();
+    output += "Currently there's a difference of " + std::to_string(file_diff) + "files.";
     output += " Server will request accordingly commands to update session.";
+    aprint(output, 2);
 
     int delta_packets = 0;
     // updates session with missing files
@@ -519,9 +504,8 @@ void ClientSession::client_sent_clist_(packet buffer, std::string args)
 
             if(!sfile.is_open()) 
             {
-                std::string output = "\t[SESSION COMMANDS MANAGER] " + get_identifier();
-                output += " Server could not bufferize file to send: " + file;
-                aprint(output);
+                std::string output = get_identifier() + " Server could not bufferize file to send: " + file;
+                aprint(output, 2);
                 
                 // jumps to the next file...
                 continue;
@@ -583,9 +567,8 @@ void ClientSession::client_sent_clist_(packet buffer, std::string args)
         else
         {
             // if there is no mutex for this file, an error has occured!
-            std::string output = "\n[SESSION COMMANDS MANAGER] " + get_identifier();
-            output += " No file mutex was found for file \"" + file + "\"!";
-            aprint(output);
+            std::string output = get_identifier() + " No file mutex was found for file \"" + file + "\"!";
+            aprint(output, 2);
             
             // goes to the next file...
             continue;
@@ -609,10 +592,9 @@ void ClientSession::client_sent_clist_(packet buffer, std::string args)
         send_cv_.notify_one();
     }
 
-    output = "\t[SESSION COMMANDS MANAGER] " + get_identifier();
-    output += " Files now should be updating... A total of" + std::to_string(delta_packets);
-    output += " were created for this.";
-    aprint(output);
+    output = get_identifier() + " Files now should be updating... A total of"; 
+    output += std::to_string(delta_packets) + " were created for this.";
+    aprint(output, 2);
 }
 
 void ClientSession::client_sent_sdownload_(std::string args, packet buffer, std::string arg2)
@@ -622,10 +604,9 @@ void ClientSession::client_sent_sdownload_(std::string args, packet buffer, std:
     if(arg2 == "fail")
     {
         // command failed
-        std::string output = "\t[SESSION COMMANDS MANAGER] " + get_identifier();
-        output += " Server requested upload of file \"" + args;
-        output += "\" failed!";
-        aprint(output);
+        std::string output = get_identifier() + " Server requested upload of file \"";
+        output += args + "\" failed!";
+        aprint(output, 2);
     }
     else
     {
@@ -636,9 +617,8 @@ void ClientSession::client_sent_sdownload_(std::string args, packet buffer, std:
         
         if(arg2 == "fail")
         {
-            std::string output = "\t[SESSION COMMANDS MANAGER]" + get_identifier();
-            output += " Download request failed!";
-            aprint(output);
+            std::string output = get_identifier() + " Download request failed!";
+            aprint(output, 2);
             return;
         }
 
@@ -662,9 +642,9 @@ void ClientSession::client_sent_sdownload_(std::string args, packet buffer, std:
             }
             send_cv_.notify_one();
 
-            std::string output = "\t[SESSION COMMANDS MANAGER] " + get_identifier();
-            output += "Could not write on file \"" + file_name + "\" sent by user!";
-            aprint(output);
+            std::string output = get_identifier() + " Could not write on file \"";
+            output += file_name + "\" sent by user!";
+            aprint(output, 2);
             return;
         }
         else 
@@ -689,10 +669,9 @@ void ClientSession::client_sent_sdownload_(std::string args, packet buffer, std:
                 }
                 else
                 {
-                    std::string output = "[SESSION MANAGER] " + get_identifier();
-                    output += " No file mutex was found for \"" + file_name;
-                    output += "\"!";
-                    throw std::runtime_error(output);
+                    std::string output = get_identifier() + " No file mutex was found for \"";
+                    output += file_name + "\"!";
+                    raise(output, 2);
                 }
             }
             return;
@@ -708,10 +687,9 @@ void ClientSession::client_sent_supload_(std::string args, std::string arg2)
     if(arg2 == "fail")
     {
         // command failed
-        std::string output = "\t[SESSION COMMANDS MANAGER] " + get_identifier();
-        output += " Server requested download of file \"" + args;
-        output += "\" failed!";
-        aprint(output);
+        std::string output = get_identifier() + " Server requested download of file \"";
+        output += args + "\" failed!";
+        aprint(output, 2);
     }
     else
     {
@@ -726,9 +704,8 @@ std::string ClientSession::slist_()
     DIR* dir = opendir(directory_path_.c_str());
     if(dir == nullptr) 
     {
-        std::string output = "[SESSION MANAGER] " + get_identifier();
-        output += " Could not acess user folder!";
-        throw std::runtime_error(output);
+        std::string output = get_identifier() + " Could not acess user folder!";
+        raise(output, 2);
     }
 
     // main output string
@@ -739,9 +716,9 @@ std::string ClientSession::slist_()
         DIR* dir = opendir(current_path.c_str());
         if(dir == nullptr) 
         {
-            std::string output = "[SESSION MANAGER] " + get_identifier();
-            output += " Could not acess \"" + current_path + "\" user folder!";
-            throw std::runtime_error(output);
+            std::string output = get_identifier() + " Could not acess \"";
+            output += current_path + "\" user folder!";
+            raise(output, 2);
         }
 
         dirent* entry;

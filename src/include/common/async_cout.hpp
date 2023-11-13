@@ -5,7 +5,15 @@
 
 namespace async_cout
 {
-    void aprint(std::string content, bool endl=true);
+    void print(
+        std::string content, 
+        std::string module_name,
+        int indent, 
+        int fg, 
+        int bg, 
+        bool endl = true);
+    void altprint(std::string content, bool endl = true);
+
     std::string agets();
     
     void add_to_buffer(char c);

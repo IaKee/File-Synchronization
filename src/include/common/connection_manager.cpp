@@ -55,7 +55,7 @@ bool ConnectionManager::is_port_available(int port)
     if(sockfd == -1) 
     {
         // Erro na criação do socket
-        perror("[CONNECTION MANAGER] Error creating socket!");
+        raise("Error creating socket!");
         return false;
     }
 
@@ -118,18 +118,18 @@ void ConnectionManager::set_address(std::string address)
 
 std::string ConnectionManager::get_host_by_name(const std::string host_name) 
 {   
-    aprint("\t[CONNECTION MANAGER] Resolving host...");
+    aprint("Resolving host...");
 
     struct hostent* host = gethostbyname(host_name.c_str());
     if(host == nullptr) 
     {
-        throw std::runtime_error("[CONNECTION MANAGER] Error resolving host!");
+        raise("Error resolving host!");
     }
 
     char ip[INET_ADDRSTRLEN];
     if(inet_ntop(AF_INET, host->h_addr, ip, sizeof(ip)) == nullptr) 
     {
-        throw std::runtime_error("[CONNECTION MANAGER] Error converting IP address!");
+        raise("Error converting IP address!");
     }
 
     return ip;
@@ -142,7 +142,7 @@ void ConnectionManager::set_port(int port)
 
 void ConnectionManager::create_socket() 
 {   
-    aprint("\t[CONNECTION MANAGER] Creating socket... ");
+    aprint("Creating socket... ");
 
     // creates a new socket for communication
     sockfd_ = socket(AF_INET, SOCK_STREAM, 0);  // SOCK_STREAM specifies TCP
@@ -150,13 +150,13 @@ void ConnectionManager::create_socket()
     
     if(sock_error)
     {
-        throw std::runtime_error("[CONNECTION MANAGER] Error creating socket!");
+        raise("Error creating socket!");
     }
 }
 
 void ConnectionManager::close_socket()
 {
-    aprint("\t[CONNECTION MANAGER] Closing socket...");
+    aprint("Closing socket...");
     
     if (sockfd_ != -1) 
     {
@@ -203,11 +203,11 @@ void ConnectionManager::send_data(char* buffer, std::size_t buffer_size, int soc
     int result = select(socket + 1, nullptr, &write_fds, nullptr, &send_timeout);
     if(result == -1) 
     {
-        throw std::runtime_error("[CONNECTION MANAGER] Error sending buffer on socket " + std::to_string(socket) + "!");
+        raise("Error sending buffer on socket " + std::to_string(socket) + "!");
     } 
     else if(result == 0) 
     {
-        throw std::runtime_error("[CONNECTION MANAGER] Timed out on socket " + std::to_string(socket) + "!");
+        raise("Timed out on socket " + std::to_string(socket) + "!");
     }
 
     std::size_t total_sent = 0;
@@ -220,7 +220,7 @@ void ConnectionManager::send_data(char* buffer, std::size_t buffer_size, int soc
             
             if (bytes_sent == -1) 
             {
-                throw std::runtime_error("[CONNECTION MANAGER] Error sending buffer on socket " + std::to_string(socket) + "!");
+                raise("Error sending buffer on socket " + std::to_string(socket) + "!");
             }
             total_sent += bytes_sent;
         }
@@ -266,11 +266,11 @@ void ConnectionManager::receive_data(char* buffer, std::size_t buffer_size, int 
 
     if(result == -1) 
     {
-        throw std::runtime_error("[CONNECTION MANAGER] Error recieving buffer on socket " + std::to_string(socket) + "!");
+        raise("Error recieving buffer on socket " + std::to_string(socket) + "!");
     } 
     else if(result == 0) 
     {
-        throw std::runtime_error("[CONNECTION MANAGER] Timed out on socket " + std::to_string(socket) + "!");
+        raise("Timed out on socket " + std::to_string(socket) + "!");
     }
 
     if(FD_ISSET(socket, &read_fds)) 
@@ -286,11 +286,11 @@ void ConnectionManager::receive_data(char* buffer, std::size_t buffer_size, int 
             } 
             else if(bytes_received == 0) 
             {
-                throw std::runtime_error("[CONNECTION MANAGER] Connection terminated by remote host!");
+                raise("Connection terminated by remote host!");
             } 
             else 
             {
-                throw std::runtime_error("[CONNECTION MANAGER] Error recieving buffer on socket " + std::to_string(socket) + "!");
+                raise("Error recieving buffer on socket " + std::to_string(socket) + "!");
             }
         }
     }
@@ -336,3 +336,65 @@ void ConnectionManager::receive_packet(packet& p, int sockfd, int timeout)
     }
 }
 
+void connection::aprint(std::string content, int scope, bool endl)
+{
+    std::string scope_name = "";
+    bool valid_scope = false;
+
+    switch (scope)
+    {
+        case 1:
+        {
+            scope_name = "CLIENT";
+            valid_scope = true;
+            break;
+        }
+        case 2:
+        {
+            scope_name = "SERVER";
+            valid_scope = true;
+            break;
+        }
+        default:
+        {
+            break;
+        }
+    }
+
+    if(valid_scope)
+        scope_name = " - " + scope_name;
+
+    print(content, "connection manager" + scope_name, 1, 0, 3, endl);
+}
+
+void connection::raise(std::string error, int scope)
+{
+    std::string scope_name = "";
+    bool valid_scope = false;
+
+    switch (scope)
+    {
+        case 1:
+        {
+            scope_name = "CLIENT";
+            valid_scope = true;
+            break;
+        }
+        case 2:
+        {
+            scope_name = "SERVER";
+            valid_scope = true;
+            break;
+        }
+        default:
+        {
+            break;
+        }
+    }
+
+    if(valid_scope)
+        scope_name = "[" + scope_name + "]";
+
+    std::string exception_string = "[CONNECTION MANAGER]" + scope_name + error;
+    throw std::runtime_error(exception_string);
+}

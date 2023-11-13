@@ -19,6 +19,9 @@
 // defining namespace command reader
 namespace user_interface
 {
+    void aprint(std::string content, bool endl = true);
+    void raise(std::string content);
+    
     class UserInterface 
     {
         public:
@@ -41,6 +44,7 @@ namespace user_interface
             std::string* command_buffer_;
             std::vector<std::string>* sanitized_commands_;
             std::thread input_thread_;
+
 
         private:
             void input_loop();

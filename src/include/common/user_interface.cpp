@@ -54,12 +54,12 @@ void UserInterface::start()
         if(running_)
         {
             // incorrect usage of the start method
-            throw std::runtime_error("\t[USER INTERFACE] Incorrect usage of method start()!");
+            raise("Incorrect usage of method start()!");
         }
-        aprint("\t[USER INTERFACE] disabling charater echo...");
+        aprint("Disabling charater echo...");
         disable_echo();
 
-        aprint("\t[USER INTERFACE] initializing...");
+        aprint("Initializing...");
 
         // sets thread control variable to running
         running_ = true;
@@ -74,11 +74,11 @@ void UserInterface::start()
     }
     catch(const std::exception& e)
     {
-        aprint("\t[USER INTERFACE] Error initializing: " + std::string(e.what()));
+        aprint("Error initializing: " + std::string(e.what()));
     }
     catch(...)
     {
-        aprint("\t[USER INTERFACE] Unknown error initializing!");
+        aprint("Unknown error initializing!");
     }
     
 }
@@ -87,12 +87,12 @@ void UserInterface::stop()
 {
     if(!running_ || stop_requested_)
     {  // incorrect usage of the stop method
-        throw std::runtime_error("[USER INTERFACE] Incorrect usage of method stop()!");
+        raise("Incorrect usage of method stop()!");
     }
 
     running_ = false;
     stop_requested_.store(true);
-    aprint("\t[USER INTERFACE] Flags set to stop!");
+    aprint("Flags set to stop!");
 }
 
 void UserInterface::input_loop()
@@ -132,12 +132,12 @@ void UserInterface::input_loop()
     catch(const std::exception& e)
     {
         aprint("\t[USER_INTERFACE] Error occured on main_loop(): " + std::string(e.what()));
-        throw std::runtime_error(e.what());
+        raise(e.what());
     }
     catch(...)
     {
-        aprint("\t[USER_INTERFACE] Unknown error occured on main_loop()!");
-        throw std::runtime_error("[USER_INTERFACE] Unknown error occured on main_loop()!");
+        aprint("Unknown error occured on main_loop()!");
+        raise("Unknown error occured on main_loop()!");
     }
 }
 
@@ -182,4 +182,15 @@ void UserInterface::enable_echo()
     t.c_lflag |= ECHO;
     tcsetattr(STDIN_FILENO, TCSANOW, &t);
     ignoring_ = false;
+}
+
+void user_interface::aprint(std::string content, bool endl)
+{
+    print(content, "user interface", 1, 0, 4, endl);
+}
+
+void user_interface::raise(std::string error)
+{
+    std::string exception_string = "[USER INTERFACE]" + error;
+    throw std::runtime_error(exception_string);
 }

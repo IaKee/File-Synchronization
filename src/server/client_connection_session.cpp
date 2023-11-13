@@ -47,10 +47,10 @@ ClientSession::ClientSession(
         running_sender_(false),
         initializing_(true)
 {
-    aprint("\t[SESSION MANAGER] Starting up new session for user " + username_ + "(" + std::to_string(socket_fd_) + ")");
+    aprint("Starting up new session for user " + username_ + "(" + std::to_string(socket_fd_) + ")", 1);
     start_sender();
     start_receiver();
-    aprint("\t[SESSION MANAGER] Started!");
+    aprint("Started!", 1);
 }
 
 ClientSession::~ClientSession()

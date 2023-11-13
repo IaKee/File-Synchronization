@@ -24,6 +24,9 @@ using json = nlohmann::json;
 
 namespace server
 {
+    void aprint(std::string content, bool endl = true);
+    void raise(std::string error);
+    
     class Server
     {
         public:

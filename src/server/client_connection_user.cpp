@@ -34,16 +34,16 @@ User::User(
     // checks if user had a folder on the server
     if(!fs::exists(user_dir_path_))
     {
-        aprint("\t[USER MANAGER] Creating folder for user " + username + "...");
+        aprint("Creating folder for user " + username + "...", 4);
         if(!create_directory(user_dir_path_))
         {
-            throw std::runtime_error("[USER MANAGER] Could not create folder for user " + username);
+            raise("Could not create folder for user " + username, 4);
         }
     }
 
     // after loading user, starts up overseer thread to process user events
     start_overseer();
-    aprint("\t[USER MANAGER] Overseer initialized for user \"" + username_ + "\"...");
+    aprint("Overseer initialized for user \"" + username_ + "\"...", 4);
 }
 
 std::string User::get_username()
@@ -60,7 +60,7 @@ void User::add_session(client_connection::ClientSession* new_session)
     }
     else
     {
-        throw std::runtime_error("[USER MANAGER] Session limit reached for this user!");
+        raise("Session limit reached for this user!", 4);
     }
 
 }
@@ -71,7 +71,7 @@ void User::remove_session(int sock_fd, std::string reason)
     // if it is under the maximum connection number
     if(get_session(sock_fd) != nullptr)
     {
-        throw std::runtime_error("[USER MANAGER] No session exists under given socket descriptor!");
+        raise("No session exists under given socket descriptor!", 4);
     }
     else
     {
@@ -94,7 +94,7 @@ void User::remove_session(int sock_fd, std::string reason)
             }
         }
     }
-    throw std::runtime_error("[USER MANAGER] Could not find given session to remove!");
+    raise("Could not find given session to remove!", 4);
 }
 
 client_connection::ClientSession* User::get_session(int sock_fd)
@@ -125,9 +125,9 @@ void User::broadcast_other_sessions(int caller_sockfd, packet& p)
     // excluding the one that actually sent it
 
     // this prints for every packet, remove for better performance
-    std::string output = "\t[USER MANAGER] Broadcasting packet on user " + username_;
+    std::string output = "Broadcasting packet on user " + username_;
     output += " from session " + std::to_string(caller_sockfd) + ".";
-    aprint(output);
+    aprint(output, 4);
 
     for(client_connection::ClientSession* session : sessions_)
     {
@@ -141,10 +141,10 @@ void User::broadcast_other_sessions(int caller_sockfd, packet& p)
         }
         catch(const std::exception& e)
         {
-            std::string output = "\t[USER MANAGER] An exception happened ";
+            std::string output = "An exception happened ";
             output += "while sending buffer to session " + session->get_socket_fd();
             output += "! Errors caught: " + std::string(e.what());
-            aprint(output);
+            aprint(output, 4);
         }     
     }
 }
@@ -160,10 +160,10 @@ void User::broadcast(packet& p)
         }
         catch(const std::exception& e)
         {
-            std::string output = "\t[USER MANAGER] An exception happened ";
+            std::string output = "An exception happened ";
             output += "while sending buffer to session " + session->get_socket_fd();
             output += "! Errors caught: " + std::string(e.what());
-            aprint(output);
+            aprint(output, 4);
         }     
     }
 }
@@ -186,7 +186,7 @@ std::string User::get_home_directory()
 
 void User::start_overseer()
 {
-    aprint("\t[USER MANAGER] Initializing overseer for user \"" + username_ + "\"...");
+    aprint("Initializing overseer for user \"" + username_ + "\"...", 4);
     overseer_running_.store(true);
     overseer_th_ = std::thread(
         [this]()
@@ -220,7 +220,7 @@ void User::overseer_loop()
             if(minutes_passed.count() > 5)
             {
                 // 5 minutes passed, nukes session
-                session->disconnect("kicked due to inactivity");
+                session->disconnect("Kicked due to inactivity");
             }
             else
             {

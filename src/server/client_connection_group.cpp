@@ -57,7 +57,7 @@ void UserGroup::load_user(std::string username)
     //client_connection::User new_user(username, sync_dir_);
     //users_.push_back(&new_user);
     users_.push_back(new_user.release());
-    aprint("\t[USER GROUP MANAGER] User \"" + username + "\" loaded to vector.");
+    aprint("User \"" + username + "\" loaded to vector.", 5);
 }
 
 void UserGroup::unload_user(std::string username)
@@ -70,7 +70,7 @@ void UserGroup::unload_user(std::string username)
         {   
             // after disconnecting, removes it from the list
             it = users_.erase(it);
-            aprint("[USER GROUP MANAGER] User " + username + " removed.");
+            aprint("User " + username + " removed.", 5);
             return;
         }
         else

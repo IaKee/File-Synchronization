@@ -30,6 +30,9 @@ using namespace utils_packet;
 
 namespace connection
 {
+    void aprint(std::string content, int scope = 0, bool endl = true);
+    void raise(std::string error, int scope = 0);
+    
     class ConnectionManager 
     {
         public:

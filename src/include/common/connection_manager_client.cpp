@@ -17,16 +17,13 @@ ClientConnectionManager::ClientConnectionManager()
 
 void ClientConnectionManager::connect_to_server(std::string address, int port) 
 {   
-    aprint("\t[CLIENT CONNECTION MANAGER] Resolving host name...");
+    aprint("Resolving host name...", 1);
     std::string adjusted_address = this->get_host_by_name(address);
     this->set_address(adjusted_address);
     this->set_port(port);
 
     std::string ip_addr = this->get_address();
-    aprint("\t[CLIENT CONNECTION MANAGER] Connecting to server..." 
-        + ip_addr
-        + ":" 
-        + std::to_string(port));
+    aprint("Connecting to server at" + ip_addr + "(" + std::to_string(port) + ")...", 1);
     
     sockaddr_in server_addr;
     std::memset(&server_addr, 0, sizeof(server_addr));
@@ -35,7 +32,7 @@ void ClientConnectionManager::connect_to_server(std::string address, int port)
 
     if(inet_pton(AF_INET, ip_addr.c_str(), &server_addr.sin_addr) <= 0) 
     {
-        throw std::runtime_error("[CLIENT CONNECTION MANAGER] Error converting IP address!");
+        raise("Error converting IP address!", 1);
     }
 
     int sockfd = this->get_sock_fd();
@@ -44,7 +41,7 @@ void ClientConnectionManager::connect_to_server(std::string address, int port)
         reinterpret_cast<sockaddr*>(&server_addr), 
         sizeof(server_addr)) < 0) 
     {
-        throw std::runtime_error("[CLIENT CONNECTION MANAGER] Error connecting to server!");
+        raise("Error connecting to server!", 1);
     }
 }
 
@@ -67,9 +64,8 @@ int ClientConnectionManager::login(std::string username, std::string machine_nam
     }
     catch(const std::exception& e)
     {
-        std::string eoutput = "[CLIENT CONNECTION MANAGER] Could not send login request:\n\t\t";
-        eoutput += std::string(e.what());
-        throw std::runtime_error(eoutput);
+        std::string eoutput = "Could not send login request:\n\t\t" + std::string(e.what());
+        raise(eoutput, 1);
     }
     
     try
@@ -91,31 +87,31 @@ int ClientConnectionManager::login(std::string username, std::string machine_nam
             {
                 std::string session_sid = sanitized_payload[2];
                 int session_id = std::stoi(session_sid);
-                aprint("[CLIENT CONNECTION MANAGER] Login approved on session " + session_sid + "!");
+                aprint("Login approved on session " + session_sid + "!", 1);
                 return session_id;
             }
             else if(status == "fail")
             {
                 std::string reason = charraystr(login_confirmation.payload, login_confirmation.payload_size);
-                throw std::runtime_error("[CLIENT CONNECTION MANAGER] Login refused! " + reason);
+                raise("Login refused! " + reason, 1);
             }
             else
             {
-                throw std::runtime_error("[CLIENT CONNECTION MANAGER] Unknown login command status!");
+                raise("Unknown login command status!", 1);
             }
         }
         else        
         {
-            std::string eoutput = "[CLIENT CONNECTION MANAGER] Unknown command!";
-            eoutput += "Expected \'login\', but got \'" + command + "\'!";
-            throw std::runtime_error(eoutput);
+            std::string eoutput = "Unknown command! Expected \'login\', but got \'" + command + "\'!";
+            raise(eoutput, 1);
         }
     }
     catch(const std::exception& e)
     {
-        std::string eoutput = "[CLIENT CONNECTION MANAGER] A critical error occured while loggin in: ";
-        eoutput += std::string(e.what());
-        throw std::runtime_error(eoutput);
+        std::string eoutput = "A critical error occured while loggin in: " + std::string(e.what());
+        raise(eoutput, 1);
     }
-    
+
+    // unreachable
+    return -1;
 }

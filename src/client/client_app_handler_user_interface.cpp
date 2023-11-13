@@ -112,7 +112,6 @@ void Client::process_user_interface_commands_()
             if(ui_sanitized_buffer_[0] == "get" && ui_sanitized_buffer_[1] == "sync" && ui_sanitized_buffer_[2] == "dir")
             {
                 aprint("\t[SYNCWIZARD CLIENT] Starting synchronization routine...");
-
                 // temporary files are cleaned on startup
 
                 // requests server to start file synchronization methods

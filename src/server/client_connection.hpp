@@ -20,6 +20,10 @@ using namespace utils_packet;
 
 namespace client_connection
 {
+    // other
+    void aprint(std::string content, int scope = 0, bool endl = true);
+    void raise(std::string content, int scope = 0);
+
     class ClientSession
     {
         // client connection instance to server
@@ -57,6 +61,7 @@ namespace client_connection
             void start_sender();
             void stop_sender();
             void session_sender_loop();
+
         private:
             // identifiers
             int socket_fd_;  // connection identifier

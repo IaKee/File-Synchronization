@@ -21,7 +21,7 @@ struct termios old_settings, new_settings;
 void cleanup(int signal)
 {
 	tcsetattr(STDIN_FILENO, TCSANOW, &old_settings);
-	std::cout << "\n[CLEANUP] Restored terminal to cooked mode..." << std::endl;
+	std::cout << "[CLEANUP] Restored terminal to cooked mode..." << std::endl;
 
 	stop_capture();
 	std::exit(signal);
@@ -30,14 +30,15 @@ void cleanup(int signal)
 int main()
 {	
 	// saves current terminal mode
-	std::cout << "[MAIN][CLEANUP] Saving terminal current mode..." << std::endl;
+	std::cout << "[MAIN] Saving terminal current mode..." << std::endl;
     tcgetattr(STDIN_FILENO, &old_settings);
-	std::cout << "[MAIN][CLEANUP] Setting terminal to raw mode..." << std::endl;
+	std::cout << "[MAIN] Setting terminal to raw mode..." << std::endl;
     new_settings = old_settings;
     new_settings.c_lflag &= ~(ICANON | ECHO);
     tcsetattr(STDIN_FILENO, TCSANOW, &new_settings);
 	std::signal(SIGINT, cleanup);
 	
+	// starts async cout
 	start_capture();
 
 	try
@@ -47,14 +48,15 @@ int main()
 	}
 	catch(const std::exception& e)
     {
-        aprint("[MAIN] Exception captured:\n\t" + std::string(e.what()));
+		std::string eoutput = "Exception captured:\n\t" + std::string(e.what());
+        print(eoutput, "main", 0, 0, 0);
     }
 	catch(...)
 	{
-		aprint("[MAIN] Unknwon exception captured!");
+		print("Unknwon exception captured!", "main", 0, 0, 0);
 	}
 
-	aprint("\t[MAIN] running cleanup...");
+	print("Running cleanup...", "main", 0, 0, 0);
 	cleanup(0);
 	return 0;
 }
