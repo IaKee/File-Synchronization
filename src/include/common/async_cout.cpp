@@ -32,7 +32,12 @@ std::condition_variable input_cv;
 std::atomic<bool> capturing = false;
 std::thread capture_th;
 
-void async_cout::print(std::string content, std::string module_name, int indent, int fg, int bg, bool endl)
+void async_cout::print(
+    std::string content, 
+    std::string module_name, 
+    int indent, int fg, 
+    int bg, 
+    bool endl)
 {
     // string modifier for color coding module names
     bool has_modifier = false;

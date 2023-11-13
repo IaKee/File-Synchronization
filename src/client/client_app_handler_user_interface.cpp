@@ -33,7 +33,7 @@ void Client::process_user_interface_commands_()
 
             if(command_name == "exit")
             {
-                aprint("\t[SYNCWIZARD CLIENT] Stop requested by user...");
+                aprint("Stop requested by user...", 1);
 
                 // informs server
                 packet exit_packet;
@@ -48,7 +48,7 @@ void Client::process_user_interface_commands_()
                 }
 
                 // deletes temporary files
-                aprint("\t[SYNCWIZARD CLIENT] Deleting temporary download files...");
+                aprint("Deleting temporary download files...", 1);
                 delete_temporary_download_files_(this->sync_dir_path_);
 
                 if(inotify_.is_running() == true)
@@ -103,7 +103,7 @@ void Client::process_user_interface_commands_()
             }
             else
             {
-                aprint("\t[SYNCWIZARD CLIENT] Could not find a valid command by \"" + ui_buffer_ + "\"!");
+                aprint("Could not find a valid command by \"" + ui_buffer_ + "\"!", 1);
                 break;
             }
         }
@@ -111,7 +111,7 @@ void Client::process_user_interface_commands_()
         {
             if(ui_sanitized_buffer_[0] == "get" && ui_sanitized_buffer_[1] == "sync" && ui_sanitized_buffer_[2] == "dir")
             {
-                aprint("\t[SYNCWIZARD CLIENT] Starting synchronization routine...");
+                aprint("Starting synchronization routine...", 1);
                 // temporary files are cleaned on startup
 
                 // requests server to start file synchronization methods
@@ -121,13 +121,13 @@ void Client::process_user_interface_commands_()
             }
             else
             {
-                aprint("\t[SYNCWIZARD CLIENT] Could not find a valid command by \"" + ui_buffer_ + "\"!");
+                aprint("Could not find a valid command by \"" + ui_buffer_ + "\"!", 1);
                 break;
             }
         }
         default:
         {
-            aprint("\t[SYNCWIZARD CLIENT] Could not find a valid command by \"" + ui_buffer_ + "\"!");
+            aprint("Could not find a valid command by \"" + ui_buffer_ + "\"!", 1);
             break;
         }
     }
@@ -156,7 +156,7 @@ void Client::process_inotify_commands_()
         }
         default:
         {
-            aprint("\t[SYNCWIZARD CLIENT] Invalid inotify event!");
+            aprint("Invalid inotify event!", 1);
             break;
         }
     }

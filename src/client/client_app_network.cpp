@@ -25,7 +25,7 @@ using namespace async_cout;
 
 void Client::start_receiver()
 {
-    aprint("\t[SYNCWIZARD CLIENT] Starting up receiver module.");
+    aprint("Starting up receiver module.", 2);
     running_receiver_.store(true);
     receiver_th_ = std::thread(
         [this]()
@@ -36,7 +36,7 @@ void Client::start_receiver()
 
 void Client::stop_receiver()
 {
-    aprint("\t[SYNCWIZARD CLIENT] Stopping receiver module...");
+    aprint("Stopping receiver module...", 2);
     running_receiver_.store(false);
     if(receiver_th_.joinable())
     {
@@ -52,7 +52,7 @@ void Client::receiver_loop()
         std::unique_lock<std::mutex> lock(receive_mtx_);
         if (running_receiver_.load() == false)
         {
-            aprint("\t[SYNCWIZARD CLIENT] Stopping receiver module...");
+            aprint("Stopping receiver module...", 2);
             return;
         }   
 
@@ -70,7 +70,7 @@ void Client::receiver_loop()
             {
                 case 0:
                 {
-                    aprint("\t[SYNCWIZARD CLIENT] Received malformed string from server.");
+                    aprint("Received malformed string from server.", 2);
                     break;
                 }
                 case 1:
@@ -177,16 +177,16 @@ void Client::receiver_loop()
         }
         catch(const std::exception& e)
         {
-            std::string output = "[SYNCWIZARD CLIENT] Critical error recieving data from server: ";
+            std::string output = "Critical error recieving data from server: ";
             output += std::string(e.what());
-            throw std::runtime_error(output);
+            raise(output, 2);
         }
     }
 }
 
 void Client::start_sender()
 {
-    aprint("\t[SYNCWIZARD CLIENT] Starting up sender module.");
+    aprint("Starting up sender module.", 2);
     running_sender_.store(true);
     sender_th_ = std::thread(
         [this]()
@@ -197,7 +197,7 @@ void Client::start_sender()
 
 void Client::stop_sender()
 {
-    aprint("\t[SYNCWIZARD CLIENT] Stopping sender module...");
+    aprint("Stopping sender module...", 2);
     running_sender_.store(false);
     send_cv_.notify_one();
     if(sender_th_.joinable())
@@ -218,7 +218,7 @@ void Client::sender_loop()
 
             if(running_sender_.load() == false)
             {
-                aprint("\t[SYNCWIZARD CLIENT] Stopping sender module...");
+                aprint("Stopping sender module...", 2);
                 return;
             }
 
@@ -238,9 +238,9 @@ void Client::sender_loop()
         }
         catch(const std::exception& e)
         {
-            std::string output = "[SYNCWIZARD CLIENT] Critical error sending data to server: ";
+            std::string output = "Critical error sending data to server: ";
             output += std::string(e.what());
-            throw std::runtime_error(output);
+            raise(output, 2);
         }
 
         send_cv_.notify_one();

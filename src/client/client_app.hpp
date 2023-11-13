@@ -27,8 +27,8 @@ using namespace utils_packet;
 
 namespace client_app
 {
-    void aprint(std::string content, int scope, bool endl);
-    void raise(std::string error);
+    void aprint(std::string content, int scope = -1, bool endl = true);
+    void raise(std::string error, int scope = -1);
 
     class Client
     {

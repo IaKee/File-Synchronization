@@ -99,8 +99,7 @@ void Client::request_delete_(std::string args)
     std::string local_file_path = sync_dir_path_ + file_path;
     if(is_valid_path(local_file_path) == false)
     {
-        std::string output = "\t[SYNCWIZARD CLIENT] Could not acess given file!";
-        aprint(output);
+        aprint("Could not acess given file!", 3);
         return;
     }
     
@@ -121,17 +120,17 @@ void Client::request_delete_(std::string args)
         }
         else
         {
-            std::string output = "\t[SYNCWIZARD CLIENT] Could not find a file mutex for \"";
+            std::string output = "Could not find a file mutex for \"";
             output += file_path + "\"!";
-            throw std::runtime_error(output);
+            raise(output, 3);
             return;
         }
     }
     else
     {
-        std::string output = "\t[SYNCWIZARD CLIENT] Could not find a file mutex for \"";
+        std::string output = "Could not find a file mutex for \"";
         output += args + "\"!";
-        throw std::runtime_error(output);
+        raise(output, 3);
         return;
     }
 }
@@ -156,10 +155,10 @@ void Client::upload_command_(std::string args, std::string reason)
 
     if(!is_valid_path(local_file_path))
     {
-        aprint("\t[SYNCWIZARD CLIENT] Malformed upload request!");
-        std::string output = "\t[SYNCWIZARD CLIENT] Could not acess requested file: \"";
+        aprint("Malformed upload request!", 3);
+        std::string output = "Could not acess requested file: \"";
         output += local_file_path + "\"!";
-        aprint(output);
+        aprint(output, 3);
         return;
     }
     else
@@ -183,9 +182,9 @@ void Client::upload_command_(std::string args, std::string reason)
 
             if(!file.is_open()) 
             {
-                std::string output = "\t[SYNCWIZARD CLIENT] Local machine could not acess given file: ";
+                std::string output = "Local machine could not acess given file: ";
                 output += "\"" + local_file_path + "\"!";
-                aprint(output);
+                aprint(output, 3);
                 return;
             }
             else
@@ -259,9 +258,9 @@ void Client::pong_command_()
         ping_end - ping_start_);
     double ping_ms = ping_val.count() / 1000.0;
     
-    std::string output = "\t[SYNCWIZARD CLIENT] Pinged server with a response time of ";
+    std::string output = "Pinged server with a response time of ";
     output += std::to_string(ping_ms) + "ms.";
-    aprint(output);
+    aprint(output, 3);
 }
 
 void Client::list_command_(std::string args)
@@ -281,17 +280,17 @@ void Client::list_command_(std::string args)
     DIR* dir = opendir(sync_dir_path_.c_str());
     if(dir == nullptr) 
     {
-        throw std::runtime_error("[SYNCWIZARD CLIENT] Could not access local sync_dir folder!");
+        raise("Could not access local sync_dir folder!", 3);
+        return;
     }
 
-    std::string output = "\t[SYNCWIZARD CLIENT] Currently these files are being hosted on sync_dir:";
+    std::string output = "Currently these files are being hosted on sync_dir:";
     std::function<void(const std::string&)> list_files_recursively = [&](const std::string& current_path) 
     {
         DIR* dir = opendir(current_path.c_str());
         if(dir == nullptr) 
         {
-            std::string reason = "\t[SYNCWIZARD CLIENT] Could not access local sync_dir folder!";
-            throw std::runtime_error(reason);
+            raise("Could not access or read from local sync_dir folder!", 3);
         }
 
         
@@ -347,7 +346,7 @@ void Client::list_command_(std::string args)
 
     list_files_recursively(sync_dir_path_);
     
-    aprint(output);
+    aprint(output, 3);
     return;
 }
 
@@ -374,9 +373,9 @@ int Client::delete_temporary_download_files_(std::string directory)
                 }
                 else
                 {
-                    std::string eoutput = "[SYNCWIZARD CLIENT] Could not delete any temporary files on \"";
+                    std::string eoutput = "Could not delete any temporary files on \"";
                     eoutput += std::string(entry.path()) + "\"";  
-                    aprint(eoutput);
+                    aprint(eoutput, 3);
                 }
             }
         }
@@ -391,7 +390,5 @@ int Client::delete_temporary_download_files_(std::string directory)
 void Client::malformed_command_(std::string command)
 {
     // invalid command request recieved from server
-    std::string output = "\t[SYNCWIZARD CLIENT] Malformed \"";
-    output += command + "\" command!";
-    aprint(output);
+    aprint("Malformed \"" + command + "\" command!", 3);
 }

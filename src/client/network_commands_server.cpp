@@ -38,8 +38,7 @@ void Client::server_list_command_(std::string args, packet buffer)
         
         if(file_list.size() > 0)
         {
-            std::string output = "\t[SYNCWIZARD CLIENT] Currently these files ";
-            output += "are being hosted for your user:";
+            std::string output = "Currently these files are being hosted for your user:";
 
             for(std::string file : file_list)
             {
@@ -47,24 +46,23 @@ void Client::server_list_command_(std::string args, packet buffer)
             }
 
             // prints file list
-            aprint(output);
+            aprint(output, 4);
             return;
         }
         else
         {
-            std::string output = "[\tSYNCWIZARD CLIENT] No files were found ";
-            output += "on the server for your username!";
-            aprint(output);
+            std::string output = "No files were found on the server for your user!";
+            aprint(output, 4);
             return;
         }
     }
     else if(args == "fail")
     {
-        aprint("\t[SYNCWIZARD CLIENT] List server command failed!");
+        aprint("List server command failed!", 4);
         
-        std::string reason = "\t[SYNCWIZARD CLIENT] Captured error:";
+        std::string reason = "Captured error: ";
         reason += std::string(buffer.payload, buffer.payload_size);
-        aprint(reason);
+        aprint(reason, 4);
         return;
     }
     else
@@ -96,8 +94,8 @@ void Client::server_download_command_(std::string args, std::string reason)
         }
         send_cv_.notify_one();
 
-        aprint("\t[SYNCWIZARD CLIENT] Malformed upload request recieved from server!");
-        aprint("\t[SYNCWIZARD CLIENT] Could not acess server requested file: \"" + file_path + "\"!");
+        aprint("Malformed upload request recieved from server!", 4);
+        aprint("Could not acess server requested file: \"" + file_path + "\"!", 4);
         return;
     }
     else
@@ -184,7 +182,7 @@ void Client::server_download_command_(std::string args, std::string reason)
         else
         {
             // if there is no mutex for this file, an error has occured!
-            throw std::runtime_error("\n[SYNCWIZARD CLIENT] No file mutex was found for \"" + args + "\"!");
+            raise("No file mutex was found for \"" + args + "\"!", 4);
             return;
         }
     }
@@ -199,12 +197,11 @@ void Client::server_upload_command_(std::string args, std::string checksum, pack
     if(checksum == "fail")
     {
         // user requested file download failed
-        std::string output = "\t[SYNCWIZARD CLIENT] User requested ";
-        output += "file upload for \"" + args + "\" failed!";
-        aprint(output);
-        std::string reason = "\t[SYNCWIZARD CLIENT] Captured error:";
+        std::string output = "User requested file upload for \"" + args + "\" failed!";
+        aprint(output, 4);
+        std::string reason = "Captured error: ";
         reason += std::string(buffer.payload, buffer.payload_size);
-        aprint(reason);
+        aprint(reason, 4);
         return;
     }
 
@@ -228,8 +225,8 @@ void Client::server_upload_command_(std::string args, std::string checksum, pack
         }
         send_cv_.notify_one();
 
-        aprint("\t[SYNCWIZARD CLIENT] Could not write on file sent by server!");
-        aprint("\t[SYNCWIZARD CLIENT] Could not acess file: \"" + args + "\"!");
+        aprint("Could not write on file sent by server!", 4);
+        aprint("Could not acess file: \"" + args + "\"!", 4);
         return;
     }
     else 
@@ -250,13 +247,15 @@ void Client::server_upload_command_(std::string args, std::string checksum, pack
 
                 if(current_checksum != checksum)
                 {
-                    std::string output = "[SYNCWIZARD CLIENT] File md5 checksum for";
+                    std::string output = "File md5 checksum for";
                     output += "\"" + args + "\" is different than the informed amount!";
+                    aprint(output, 4);
                 }
                 else
                 {
-                    std::string output = "[SYNCWIZARD CLIENT] File md5 checksum for";
+                    std::string output = "File md5 checksum for";
                     output += "\"" + args + "\" is exactly the informed amount!";
+                    aprint(output, 4);
                 }
 
                 // deletes temporaty file replacing the original file
@@ -265,9 +264,8 @@ void Client::server_upload_command_(std::string args, std::string checksum, pack
             }
             else
             {
-                std::string output = "[SYNCWIZARD CLIENT] No file mutex was found for \"";
-                output += args + "\"!";
-                throw std::runtime_error(output);
+                std::string output = "No file mutex was found for \"" + args + "\"!";
+                raise(output, 4);
             }
         }
         return;
@@ -281,12 +279,11 @@ void Client::server_delete_file_command_(std::string args, packet buffer, std::s
     if(arg2 == "fail")
     {
         // user requested file download failed
-        std::string output = "\t[SYNCWIZARD CLIENT] User requested ";
-        output += "delete command for \"" + args + "\" failed!";
-        aprint(output);
-        std::string reason = "\t[SYNCWIZARD CLIENT] Captured error:";
+        std::string output = "User requested delete command for \"" + args + "\" failed!";
+        aprint(output, 4);
+        std::string reason = "Captured error: ";
         reason += std::string(buffer.payload, buffer.payload_size);
-        aprint(reason);
+        aprint(reason, 4);
         return;
     }
 
@@ -307,21 +304,20 @@ void Client::server_delete_file_command_(std::string args, packet buffer, std::s
         }
         send_cv_.notify_one();
         
-        aprint("\t[SYNCWIZARD CLIENT] Invalid file path. Delete command ignored.");
+        aprint("Invalid file path. Delete command ignored.", 4);
         return;
     }
     else if(args == "fail")
     {
         // previously user-sent delete command request failed
-        std::string output = "\t[SYNCWIZARD CLIENT] Server could not process malformed delete command!";
-        aprint(output);
+        aprint("Server could not process malformed delete command!", 4);
         
         // if a rejection reason was given, print it
         if(buffer.payload_size > 0)
         {
-            output = "\t[SYNCWIZARD CLIENT] Server rejected delete command with: ";
+            std::string output = "Server rejected delete command with: ";
             output += std::string(buffer.payload, buffer.payload_size);
-            aprint(output);
+            aprint(output, 4);
         }
         return;
     }
@@ -340,14 +336,14 @@ void Client::server_delete_file_command_(std::string args, packet buffer, std::s
             else
             {
                 // if there is no mutex for this file, an error has occured!
-                throw std::runtime_error("\n[CLIENT ERROR] No file mutex was found for \"" + args + "\"!");
+                raise("No file mutex was found for \"" + args + "\"!", 4);
             }
         }
         catch(const std::exception& e)
         {
-            std::string output = "\t[SYNCWIZARD CLIENT] Exception raised while deleting file: ";
+            std::string output = "Exception raised while deleting file: ";
             output += std::string(e.what());
-            aprint(output);
+            aprint(output, 4);
 
             // sends fail packet to server
             packet fail_packet;
@@ -377,12 +373,12 @@ void Client::server_async_upload_command_(std::string args, std::string checksum
     if(checksum == "fail")
     {
         // user requested file download failed
-        std::string output = "\t[SYNCWIZARD CLIENT] User requested";
+        std::string output = "User requested";
         output += " file async download for \"" + args + "\" failed!";
-        aprint(output);
-        std::string reason = "\t[SYNCWIZARD CLIENT] Captured error:";
+        aprint(output, 4);
+        std::string reason = "Captured error:";
         reason += std::string(buffer.payload, buffer.payload_size);
-        aprint(reason);
+        aprint(reason, 4);
         return;
     }
 
@@ -406,8 +402,8 @@ void Client::server_async_upload_command_(std::string args, std::string checksum
         }
         send_cv_.notify_one();
 
-        aprint("\t[SYNCWIZARD CLIENT] Could not write on file sent by server!");
-        aprint("\t[SYNCWIZARD CLIENT] Could not acess file: \"" + args + "\"!");
+        aprint("Could not write on file sent by server!", 4);
+        aprint("Could not acess file: \"" + args + "\"!", 4);
         return;
     }
     else 
@@ -428,13 +424,15 @@ void Client::server_async_upload_command_(std::string args, std::string checksum
 
                 if(current_checksum != checksum)
                 {
-                    std::string output = "[SYNCWIZARD CLIENT] File md5 checksum for";
+                    std::string output = "File md5 checksum for";
                     output += "\"" + args + "\" is different than the informed amount!";
+                    aprint(output, 4);
                 }
                 else
                 {
-                    std::string output = "[SYNCWIZARD CLIENT] File md5 checksum for";
+                    std::string output = "File md5 checksum for";
                     output += "\"" + args + "\" is exactly the informed amount!";
+                    aprint(output, 4);
                 }
 
                 // deletes temporaty file replacing the original file
@@ -443,7 +441,7 @@ void Client::server_async_upload_command_(std::string args, std::string checksum
             }
             else
             {
-                throw std::runtime_error("\n[SYNCWIZARD CLIENT] No file mutex was found for \"" + args + "\"!");
+                raise("No file mutex was found for \"" + args + "\"!", 4);
             }
         }
         return;
@@ -453,11 +451,11 @@ void Client::server_async_upload_command_(std::string args, std::string checksum
 void Client::server_exit_command_(std::string reason)
 {
     // received logout confirmation from server
-    aprint("\t[SYNCWIZARD CLIENT] Logout requested by server!");
+    aprint("Logout requested by server!", 4);
 
     if(reason.size() > 0)
     {
-        aprint("\t[SYNCWIZARD CLIENT] Logout reason:" + reason);
+        aprint("Logout reason: " + reason, 4);
     }
 
     if(inotify_.is_running() == true)
@@ -473,7 +471,6 @@ void Client::server_exit_command_(std::string reason)
 void Client::server_malformed_command_(std::string command)
 {
     // invalid command request recieved from server
-    std::string output = "\t[SYNCWIZARD CLIENT] Received malformed \"";
-    output += command + "\" command from server!";
-    aprint(output);
+    std::string output = "Received malformed \"" + command + "\" command from server!";
+    aprint(output, 4);
 }

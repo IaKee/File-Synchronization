@@ -303,7 +303,7 @@ void ConnectionManager::send_packet(const packet& p, int sockfd, int timeout)
     std::memcpy(header_buffer, &p, sizeof(packet) - sizeof(char*));
 
     // TODO: remove this
-    aprint("sending a packet:" + std::to_string(sizeof(header_buffer)) + " with the command:" + p.command);
+    aprint("sending a packet of size " + std::to_string(sizeof(header_buffer)) + "b with the command:" + p.command);
     
     send_data(header_buffer, sizeof(header_buffer), sockfd, timeout);
 
@@ -318,6 +318,8 @@ void ConnectionManager::send_packet(const packet& p, int sockfd, int timeout)
 void ConnectionManager::receive_packet(packet& p, int sockfd, int timeout)
 {
     char header_buffer[sizeof(packet) - sizeof(char*)];
+    
+    aprint("expecting a packet of size " + std::to_string(sizeof(header_buffer)) + "b with the command:" + p.command);
 
     // tries to receive packet
     receive_data(header_buffer, sizeof(header_buffer), sockfd, timeout);

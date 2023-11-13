@@ -23,7 +23,7 @@ void ClientConnectionManager::connect_to_server(std::string address, int port)
     this->set_port(port);
 
     std::string ip_addr = this->get_address();
-    aprint("Connecting to server at" + ip_addr + "(" + std::to_string(port) + ")...", 1);
+    aprint("Connecting to server at " + ip_addr + "(" + std::to_string(port) + ")", 1);
     
     sockaddr_in server_addr;
     std::memset(&server_addr, 0, sizeof(server_addr));
