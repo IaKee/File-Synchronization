@@ -314,27 +314,26 @@ void ConnectionManager::send_packet(const packet& p, int sockfd, int timeout)
     }
 }
 
-
-void ConnectionManager::receive_packet(packet& p, int sockfd, int timeout)
+void ConnectionManager::receive_packet(packet* p, int sockfd, int timeout)
 {
     char header_buffer[sizeof(packet) - sizeof(char*)];
     
-    aprint("expecting a packet of size " + std::to_string(sizeof(header_buffer)) + "b with the command:" + p.command);
+    aprint("expecting a packet of size " + std::to_string(sizeof(header_buffer)) + "b with the command:" + p->command);
 
     // tries to receive packet
     receive_data(header_buffer, sizeof(header_buffer), sockfd, timeout);
 
-    std::memcpy(&p, header_buffer, sizeof(packet) - sizeof(char*));
+    std::memcpy(p, header_buffer, sizeof(packet) - sizeof(char*));
 
     // receives the payload
-    if (p.payload_size > 0)
+    if (p->payload_size > 0)
     {
-        p.payload = new char[p.payload_size];
-        receive_data(p.payload, p.payload_size, sockfd, timeout);
+        p->payload = new char[p->payload_size];
+        receive_data(p->payload, p->payload_size, sockfd, timeout);
     }
     else
     {
-        p.payload = nullptr;
+        p->payload = nullptr;
     }
 }
 

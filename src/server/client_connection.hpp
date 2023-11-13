@@ -34,7 +34,7 @@ namespace client_connection
                 std::string machine_name,
                 std::string directory_path,
                 std::function<void(const packet& p, int sockfd, int timeout)> send_callback_,
-                std::function<void(packet& p, int sockfd, int timeout)> receive_callback_,
+                std::function<void(packet* p, int sockfd, int timeout)> receive_callback_,
                 std::function<void(int caller_sockfd, packet& p)> broadcast_user_callback);
             
             ~ClientSession();
@@ -97,7 +97,7 @@ namespace client_connection
             
             // callbacks
             std::function<void(const packet& p, int sockfd, int timeout)> send_callback_;
-            std::function<void(packet& p, int sockfd, int timeout)> receive_callback_;
+            std::function<void(packet* p, int sockfd, int timeout)> receive_callback_;
             std::function<void(int caller_sockfd, packet& p)> broadcast_user_callback_;
             std::function<int()> get_user_count_callback_;
             
@@ -114,7 +114,9 @@ namespace client_connection
             void client_sent_sdownload_(std::string args, packet buffer, std::string arg2 = "");
             void client_sent_supload_(std::string args, std::string arg2);
             std::string slist_();
-            void receive_packet_(packet& p, int sockfd = -1, int timeout = -1);
+
+            // main communication methods
+            void receive_packet_(packet* p, int sockfd = -1, int timeout = -1);
             void send_packet_(const packet& p, int sockfd = -1, int timeout = -1);
     };
     
@@ -170,7 +172,7 @@ namespace client_connection
         public:
             UserGroup(
                 std::function<void(const packet& p, int sockfd, int timeout)> send_callback,
-                std::function<void(packet& p, int sockfd, int timeout)> receive_callback);
+                std::function<void(packet* p, int sockfd, int timeout)> receive_callback);
 
             // group control
             std::list<std::string> list_users();
@@ -187,7 +189,7 @@ namespace client_connection
 
             // callbacks
             std::function<void(const packet& p, int sockfd, int timeout)> send_callback_;
-            std::function<void(packet& p, int sockfd, int timeout)> receive_callback_;
+            std::function<void(packet* p, int sockfd, int timeout)> receive_callback_;
             
             std::vector<User*> users_;
     };

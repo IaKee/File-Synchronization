@@ -74,7 +74,7 @@ int ClientConnectionManager::login(std::string username, std::string machine_nam
         packet login_confirmation;
         {
             std::unique_lock<std::mutex> lock(receive_mtx_);
-            this->receive_packet(login_confirmation, get_sock_fd());
+            this->receive_packet(&login_confirmation, get_sock_fd());
         }
 
         std::vector<std::string> sanitized_payload = split_buffer(login_confirmation.command);

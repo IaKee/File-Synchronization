@@ -96,7 +96,7 @@ Client::Client(
         connection_manager_.connect_to_server(server_address, server_port);
 
         // after being connected tries to send login request
-        aprint("Logging in..." + std::to_string(connection_manager_.get_receive_timeout()) + std::to_string(connection_manager_.get_send_timeout()));
+        aprint("Logging in as \'" + username + "\'...");
         session_id_ = connection_manager_.login(username_, machine_name_);
         aprint("Got following session id: " + std::to_string(session_id_));
 

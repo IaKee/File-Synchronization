@@ -34,7 +34,7 @@ ClientSession::ClientSession(
     std::string machine_name,
     std::string directory_path,
     std::function<void(const packet& p, int sockfd, int timeout)> send_callback,
-    std::function<void(packet& p, int sockfd, int timeout)> receive_callback,
+    std::function<void(packet* p, int sockfd, int timeout)> receive_callback,
     std::function<void(int caller_sockfd, packet& p)> broadcast_user_callback)
     :   socket_fd_(sock_fd),
         username_(username),

@@ -63,7 +63,7 @@ namespace connection
             void send_data(char* buffer, std::size_t buffer_size, int sockfd = -1, int timeout = -1);
             void receive_data(char* buffer, std::size_t buffer_size, int sockfd = -1, int timeout = -1);
             void send_packet(const packet& p, int sockfd = -1, int timeout = -1);
-            void receive_packet(packet& p, int sockfd = -1, int timeout = -1);
+            void receive_packet(packet* p, int sockfd = -1, int timeout = -1);
             
         private:
             // identifiers
@@ -85,7 +85,6 @@ namespace connection
             // runtime control 
             std::atomic<bool> running_send_;
             std::atomic<bool> running_receive_;
-
 
             // condition variables
             std::condition_variable receive_status_;
@@ -133,6 +132,8 @@ namespace connection
 
             void start_election();
             void add_backup(std::string address, int port);
+
+            void safe_send_packet(const packet& p, int sockfd = -1, int timeout = -1);
         private:
             std::vector<std::pair<std::string, int>> server_backups_address_;
 

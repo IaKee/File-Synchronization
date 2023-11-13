@@ -190,6 +190,17 @@ void Server::handle_new_session(int new_socket, std::string username, std::strin
 			{	
 				aprint("Creating a new session...");
 				
+				// before creating a new session, sends login confirmation to client
+				std::string login_confirmation_command = "login|ok|" + std::to_string(active_sessions + 1);
+				packet login_confirmation_packet;
+				strcharray(
+					login_confirmation_command, 
+					login_confirmation_packet.command, 
+					sizeof(login_confirmation_packet.command));
+				
+				// TODO: ensure safety here
+				internet_manager.send_packet(login_confirmation_packet, new_socket);
+				
 				// creates new session instance
 				// sends references to the general send/receive methods by reference
 				std::unique_ptr<client_connection::ClientSession> created_session = 
@@ -202,7 +213,7 @@ void Server::handle_new_session(int new_socket, std::string username, std::strin
 						{
 							internet_manager.send_packet(p, sockfd, timeout);
 						},
-						[this](packet& p, int sockfd = -1, int timeout = -1) 
+						[this](packet* p, int sockfd = -1, int timeout = -1) 
 						{
 							internet_manager.receive_packet(p, sockfd, timeout);
 						},
@@ -214,12 +225,11 @@ void Server::handle_new_session(int new_socket, std::string username, std::strin
 				// TODO: remove this
 				std::string output = created_session->get_identifier();
 				output += " session added! Force starting synchronization protocol.";
-
 				// hack to force start the synchronization
             	packet sync_packet;
             	std::string command = "clist";
             	strcharray(command, sync_packet.command, sizeof(sync_packet.command));
-				created_session->add_packet_from_broadcast(sync_packet);
+				created_session->add_packet_from_broadcast(sync_packet);  // TODO: THIS IS WRONG!!!!
 				
 				// adds new session to the user manager
 				new_user->add_session(created_session.release());

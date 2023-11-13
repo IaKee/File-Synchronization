@@ -132,7 +132,13 @@
     "executor": "cpp",
     "io_context": "cpp",
     "netfwd": "cpp",
-    "timer": "cpp"
+    "timer": "cpp",
+    "compare": "cpp",
+    "concepts": "cpp",
+    "numbers": "cpp",
+    "ranges": "cpp",
+    "semaphore": "cpp",
+    "stop_token": "cpp"
   },
   "C_Cpp_Runner.useLinkTimeOptimization": false,
   "C_Cpp_Runner.msvcSecureNoWarnings": false

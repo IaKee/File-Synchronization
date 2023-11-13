@@ -52,7 +52,7 @@ void ClientSession::session_receiver_loop()
         {
             // receives a new packet
             packet buffer;
-            receive_packet_(buffer);
+            receive_packet_(&buffer);
 
             // sanitizes packet command argument
             std::vector<std::string> received_buffer = split_buffer(buffer.command);
@@ -206,7 +206,7 @@ void ClientSession::add_packet_from_broadcast(packet& p)
 {
     // receives a new packet
     packet buffer = p;
-    receive_packet_(buffer);
+    receive_packet_(&buffer);
 
     // sanitizes packet command argument
     std::vector<std::string> received_buffer = split_buffer(buffer.command);
@@ -446,7 +446,7 @@ void ClientSession::send_packet_(const packet& p, int sockfd, int timeout)
     send_callback_(p, sockfd, timeout);
 }
 
-void ClientSession::receive_packet_(packet& p, int sockfd, int timeout)
+void ClientSession::receive_packet_(packet* p, int sockfd, int timeout)
 {
     receive_callback_(p, socket_fd_, timeout);
 }

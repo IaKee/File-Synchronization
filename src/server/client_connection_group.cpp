@@ -16,7 +16,7 @@ using namespace async_cout;
 
 UserGroup::UserGroup(
     std::function<void(const packet& p, int sockfd, int timeout)> send_callback,
-    std::function<void(packet& p, int sockfd, int timeout)> receive_callback)
+    std::function<void(packet* p, int sockfd, int timeout)> receive_callback)
     :   send_callback_(send_callback),
         receive_callback_(receive_callback)
 {

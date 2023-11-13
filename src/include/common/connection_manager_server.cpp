@@ -126,7 +126,7 @@ void ServerConnectionManager::server_accept_loop(
                             packet accept_packet;
                             {
                                 std::unique_lock<std::mutex> lock(receive_mtx_);
-                                receive_packet(accept_packet, new_socket);
+                                receive_packet(&accept_packet, new_socket);
                             }
                             
                             // decodes string into argument list
@@ -285,4 +285,9 @@ void ServerConnectionManager::server_accept_loop(
 void ServerConnectionManager::add_backup(std::string address, int port)
 {
     server_backups_address_.push_back(std::make_pair(address, port));
+}
+
+void ServerConnectionManager::safe_send_packet(const packet& p, int sockfd, int timeout)
+{
+ 
 }

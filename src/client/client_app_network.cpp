@@ -60,7 +60,7 @@ void Client::receiver_loop()
         {
             // receives a new packet
             packet buffer;
-            connection_manager_.receive_packet(buffer);
+            connection_manager_.receive_packet(&buffer);
 
             // sanitizes packet command argument
             std::vector<std::string> received_buffer = split_buffer(buffer.command);
