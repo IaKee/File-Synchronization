@@ -17,16 +17,17 @@
 #include "../include/common/cxxopts.hpp"
 
 // local includes
-#include "../include/common/inotify_watcher.hpp"
-#include "../include/common/user_interface.hpp"
-#include "../include/common/connection_manager.hpp"
-#include "../include/common/utils.hpp"
-#include "../include/common/utils_packet.hpp"
+#include "../common/include/inotify_watcher.hpp"
+#include "../common/include/user_interface.hpp"
+#include "../common/include/network/connection_manager.hpp"
+#include "../common/include/utils.hpp"
+#include "../common/include/network/packet.hpp"
 
 using namespace utils_packet;
 
-namespace client_app
+namespace client_application
 {
+    // modified output strings to show code scopes
     void aprint(std::string content, int scope = -1, bool endl = true);
     void raise(std::string error, int scope = -1);
 

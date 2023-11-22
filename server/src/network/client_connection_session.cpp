@@ -47,10 +47,13 @@ ClientSession::ClientSession(
         running_sender_(false),
         initializing_(true)
 {
-    aprint("Starting up new session for user " + username_ + "(" + std::to_string(socket_fd_) + ")", 1);
+    aprint("Starting up new session for user " 
+        + username_ 
+        + "(" 
+        + std::to_string(socket_fd_) 
+        + ") - receiver/sender modules are now running!", 1);
     start_sender();
     start_receiver();
-    aprint("Started!", 1);
 }
 
 ClientSession::~ClientSession()

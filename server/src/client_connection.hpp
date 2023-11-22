@@ -51,6 +51,11 @@ namespace client_connection
             void send_ping();
             void disconnect(std::string reason = "");
             void add_packet_from_broadcast(packet& p);
+            
+            // synchronization control
+            bool is_sync();
+            void start_sync();
+            void stop_sync();
 
             // recieve handler
             void start_receiver();
@@ -79,6 +84,7 @@ namespace client_connection
             std::atomic<bool> initializing_;
             std::atomic<bool> running_sender_;
             std::atomic<bool> running_receiver_;
+            std::atomic<bool> running_sync_;
 
             // mutexes
             std::mutex send_mtx_;

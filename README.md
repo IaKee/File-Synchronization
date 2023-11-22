@@ -38,3 +38,73 @@ In addition, a command-line interface should be accessible, allowing the user to
 # list	Lists all files stored in the server's 'sync_dir'. Example: list
 # quit	Ends the current session with the server. Example: quit
 ```
+
+```
+File-Synchronization
+├─ .vscode
+│  ├─ c_cpp_properties.json
+│  ├─ launch.json
+│  ├─ settings.json
+│  └─ tasks.json
+├─ Makefile
+├─ README.md
+├─ client
+│  ├─ obj
+│  ├─ src
+│  │  ├─ application.cpp
+│  │  ├─ application.hpp
+│  │  ├─ inotify
+│  │  │  └─ handler.cpp
+│  │  ├─ main.cpp
+│  │  ├─ network
+│  │  │  ├─ client_network_handler.cpp
+│  │  │  ├─ network_commands_client.cpp
+│  │  │  └─ network_commands_server.cpp
+│  │  └─ ui
+│  │     └─ client_ui_handler.cpp
+│  └─ tests
+├─ common
+│  └─ include
+│     ├─ async_cout.cpp
+│     ├─ async_cout.hpp
+│     ├─ connection
+│     │  ├─ connection_manager.cpp
+│     │  ├─ connection_manager.hpp
+│     │  ├─ connection_manager_client.cpp
+│     │  └─ connection_manager_server.cpp
+│     ├─ cxxopts.hpp
+│     ├─ inotify_watcher.cpp
+│     ├─ inotify_watcher.hpp
+│     ├─ json.hpp
+│     ├─ lang.hpp
+│     ├─ user_interface.cpp
+│     ├─ user_interface.hpp
+│     ├─ utils.cpp
+│     ├─ utils.hpp
+│     ├─ utils_packet.cpp
+│     └─ utils_packet.hpp
+├─ server
+│  ├─ obj
+│  ├─ src
+│  │  ├─ client_connection.cpp
+│  │  ├─ client_connection.hpp
+│  │  ├─ main.cpp
+│  │  ├─ network
+│  │  │  ├─ client_connection_session.cpp
+│  │  │  ├─ client_connection_session_commands.cpp
+│  │  │  ├─ client_connection_session_network.cpp
+│  │  │  ├─ client_connection_user.cpp
+│  │  │  ├─ managers
+│  │  │  │  └─ client_connection_group.cpp
+│  │  │  └─ methods
+│  │  ├─ server
+│  │  ├─ server.cpp
+│  │  ├─ server.hpp
+│  │  ├─ server_handler_new_sessions.cpp
+│  │  └─ server_handler_user_interface.cpp
+│  └─ tests
+│     └─ ex.cpp
+└─ sync_dir_server
+   └─ iakee
+
+```

@@ -3,11 +3,11 @@
 #include <iostream>
 #include <string>
 
+// TODO: this file should not exist - there is no need
 
 // parameter descriptions
 const std::string SERVER_PROGRAM_NAME = "SyncWizard server";
 const std::string SERVER_PROGRAM_VERSION = "1.0";
-
 
 // error messages
 const std::string ERROR_CONNECTING_SERVER = "Error connecting to server.";

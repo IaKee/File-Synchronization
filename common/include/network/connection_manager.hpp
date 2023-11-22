@@ -24,7 +24,7 @@
 #include <condition_variable>
 
 // locals
-#include "utils_packet.hpp"
+#include "packet.hpp"
 
 using namespace utils_packet;
 
@@ -94,6 +94,9 @@ namespace connection
             std::thread receive_th_;
             std::thread send_th_;
 
+            // logging
+            bool console_log = true;
+            bool log_every_packet = true;
     };
 
     class ClientConnectionManager : public ConnectionManager
@@ -122,25 +125,34 @@ namespace connection
             ServerConnectionManager();
             ~ServerConnectionManager();
 
-            void create_server();
+            // start main server functions - opens main socket for further connections
+            void open_server();
 
+            // console logging
+            void enable_log();
+            void disable_log();
+            
             // main accept loop
             void start_accept_loop();
             void stop_accept_loop();
             void server_accept_loop(
                 std::function<void(int, std::string, std::string)> connection_stablished_callback = nullptr);
 
+            // operating mode and backups
+            void check_primary_server();
+            void check_for_elections();
             void start_election();
-            void add_backup(std::string address, int port);
+            void set_server_as_backup(std::string address, int port);
 
-            void safe_send_packet(const packet& p, int sockfd = -1, int timeout = -1);
         private:
-            std::vector<std::pair<std::string, int>> server_backups_address_;
-
             // multithreading & synchronization
             std::mutex accept_mtx_;
             std::condition_variable accept_status_;
             std::thread accept_th_;
             std::atomic<bool> running_accept_;
+
+            // operating mode and backups
+            std::atomic<bool> passive_mode_ = false;
+            std::vector<std::pair<std::string, int>> server_backups_address_;
     };
 }

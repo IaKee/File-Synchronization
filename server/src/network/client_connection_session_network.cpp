@@ -348,6 +348,38 @@ void ClientSession::add_packet_from_broadcast(packet& p)
     }
 }
 
+bool ClientSession::is_sync()
+{
+    // checks if the synchronization routine was enabled by the session end
+    // by default this starts off as disabled untill the session requests it
+    return running_sync_.load();
+}
+
+void ClientSession::start_sync()
+{
+    // starts up the synchronization routine
+    // this should be called uppon the server receiving a sync request
+    // which then requests the files currently being hosted by the session
+    // to then update it with the most recent files, or download the files
+    // it currently does not have
+
+    if(running_sync_.load())
+    {
+        aprint("Synchronization routine is already running!", 3);
+        return;
+    }
+
+    // TODO: sends slist to client
+
+    running_sync_.store(true);
+}
+
+void ClientSession::stop_sync()
+{
+    // stops the synchronization routine, deleting any
+    // temporary download files on server
+}
+
 void ClientSession::start_sender()
 {
     running_sender_.store(true);

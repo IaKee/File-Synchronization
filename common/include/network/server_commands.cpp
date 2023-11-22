@@ -3,9 +3,9 @@
 
 // local includes
 #include "connection_manager.hpp"
-#include "async_cout.hpp"
-#include "utils.hpp"
-#include "utils_packet.hpp"
+#include "packet.hpp"
+#include "../asyncio/async_cout.hpp"
+#include "../utils.hpp"
 
 using namespace connection;
 using namespace async_cout;
@@ -26,7 +26,7 @@ ServerConnectionManager::~ServerConnectionManager()
     }
 }
 
-void ServerConnectionManager::create_server() 
+void ServerConnectionManager::open_server() 
 {
     aprint("Creating server...", 2);
     
@@ -261,7 +261,8 @@ void ServerConnectionManager::server_accept_loop(
             else if(result == 0)
             {
                 // read timeout
-                // nothing happens, tries again on the next iteration
+                // no new connection was found
+                // goes to the next iteration
             }
             else
             {
@@ -272,22 +273,12 @@ void ServerConnectionManager::server_accept_loop(
     }
     catch(const std::exception& e)
     {
-        std::string output = "Error occured on server accept loop:\n\t\t" + std::string(e.what());
-        aprint(output, 2);
-        raise(e.what(), 2);
+        std::string eoutput = "Error occured on server accept loop:\n\t\t" + std::string(e.what());
+        aprint(eoutput, 2);
+        raise(eoutput, 2);
     }
     catch(...)
     {
         raise("Unknown error occured on server accept loop!", 2);
     }
-}
-
-void ServerConnectionManager::add_backup(std::string address, int port)
-{
-    server_backups_address_.push_back(std::make_pair(address, port));
-}
-
-void ServerConnectionManager::safe_send_packet(const packet& p, int sockfd, int timeout)
-{
- 
 }
