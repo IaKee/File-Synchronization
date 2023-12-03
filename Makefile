@@ -1,10 +1,10 @@
 # Compile client source files into an executable named 'client'
-client: 
-	g++ -o client src/client/*.cpp src/include/common/*.cpp -lcryptopp -lpthread
+client: src/client/src/*.cpp src/client/src/*/*.cpp src/common/include/*.cpp src/common/include/*/*.cpp
+	g++ -o client src/client/src/*.cpp src/client/src/*/*.cpp src/common/include/*.cpp src/common/include/*/*.cpp -lcryptopp -lpthread -g
 
 # Compile server source files into an executable named 'server'
-server:
-	g++ -o server src/server/*.cpp src/include/common/*.cpp -lcryptopp -lpthread
+server: src/server/src/*.cpp src/server/src/*/*.cpp src/server/src/*/*/*.cpp src/common/include/*.cpp src/common/include/*/*.cpp
+	g++ -o server src/server/src/*.cpp src/server/src/*/*.cpp src/server/src/*/*/*.cpp src/common/include/*.cpp src/common/include/*/*.cpp -lcryptopp -lpthread -g
 
 # Target 'both' depends on both 'client' and 'server' executables
 both: client server
@@ -13,24 +13,25 @@ both: client server
 clean:
 	rm -f client server
 
-runclient:
+runclient: client
 	./client
 
-runserver:
+runserver: server
 	./server
 
-testserver: clean server runserver
-
+test: both
+	tmux new-session -s "server" -d "./server; read"
+	tmux split-window -h "sleep 2 && ./client iakee 0.0.0.0 65535; read"
+	tmux -2 attach-session -d
 
 # Run both server and client in separate gnome-terminals
-urunboth:
+urunboth: both
 	gnome-terminal -- bash -c './server; exec bash'
 	gnome-terminal -- bash -c 'sleep 2; ./client iakee 0.0.0.0 65535; exec bash'
 
-srunboth:
+srunboth: both
 	gnome-terminal --geometry 80x24+0+0 -- bash -c './server; exec bash'
 	gnome-terminal --geometry 80x24+0+400 -- bash -c 'sleep 2; ./client iakee 0.0.0.0 65535; exec bash'
-
 
 # Install necessary packages and libraries
 install:
