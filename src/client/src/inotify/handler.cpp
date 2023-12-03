@@ -23,7 +23,7 @@ void Client::process_inotify_commands_()
             if(type == "create" || type == "modify")
             {
                 // upload file to server
-                request_async_download_(file_path);
+                upload_command_(file_path);
                 break;
             }
             else if(type == "delete")

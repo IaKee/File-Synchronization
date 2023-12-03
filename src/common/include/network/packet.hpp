@@ -12,6 +12,7 @@ namespace utils_packet
         int sequence_number = 0;
         std::size_t payload_size = 0; 
         std::size_t expected_packets = 0; // number of expected packets
+        char test[4] = "fim";
         char* payload = nullptr;
 
 

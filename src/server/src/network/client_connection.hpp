@@ -122,7 +122,7 @@ namespace client_connection
             void client_requested_adownload_(std::string args);
             void client_sent_clist_(packet buffer, std::string args = "");
             void client_sent_sdownload_(std::string args, packet buffer, std::string arg2 = "");
-            void client_sent_supload_(std::string args, std::string arg2);
+            void client_sent_supload_(std::string args, std::string arg2, char* payload, size_t payload_size, int sequence_number);
             std::string slist_();
 
             // main communication methods

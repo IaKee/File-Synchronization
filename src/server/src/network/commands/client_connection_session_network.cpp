@@ -174,7 +174,7 @@ void ClientSession::session_receiver_loop()
                     else if(command_name == "upload")
                     {
                         // user sent back server file upload request
-                        this->client_sent_supload_(args, checksum);
+                        this->client_sent_supload_(args, checksum, buffer.payload, buffer.payload_size, buffer.sequence_number);
                         break;
                     }
                     else
@@ -325,10 +325,10 @@ void ClientSession::add_packet_from_broadcast(packet& p)
                 this->client_sent_sdownload_(args, buffer, checksum);
                 break;
             }
-            else if(command_name == "supload")
+            else if(command_name == "upload")
             {
                 // user sent back server file upload request
-                this->client_sent_supload_(args, checksum);
+                this->client_sent_supload_(args, checksum, buffer.payload, buffer.payload_size, buffer.sequence_number);
                 break;
             }
             else
@@ -447,6 +447,7 @@ void ClientSession::send_ping()
         std::unique_lock<std::mutex> lock(send_mtx_);
         sender_buffer_.push_back(ping_packet);
     }
+    ping_start_ = std::chrono::high_resolution_clock::now();
     send_cv_.notify_one();
 }
 

@@ -28,6 +28,7 @@ void ConnectionManager::send_packet(const packet& p, int sockfd, int timeout)
     if (p.payload_size > 0)
     {
         send_data(p.payload, p.payload_size, sockfd, timeout);
+        delete [] p.payload;
     }
 }
 

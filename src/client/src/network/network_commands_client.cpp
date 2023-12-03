@@ -196,15 +196,16 @@ void Client::upload_command_(std::string args, std::string reason)
                 std::size_t file_size = file.tellg();
                 file.seekg(0, std::ios::beg);
                 size_t expected_packets = (file_size + default_payload - 1) / default_payload;
-                
                 // reads file bufferizingit
                 while(!file.eof())
                 {
                     // mounts a new buffer packet with default values
+                    char* payload_buffer = new char[default_payload];
                     packet upload_buffer;
                     upload_buffer.sequence_number = packet_index;
                     upload_buffer.expected_packets = expected_packets;
                     upload_buffer.payload_size = default_payload;
+                    upload_buffer.payload = payload_buffer;
                     
                     // mounts packet command
                     std::string command_response = "upload|" + file_path + "|" + checksum;
@@ -213,18 +214,19 @@ void Client::upload_command_(std::string args, std::string reason)
                     // gathers payload from file stream
                     file.read(upload_buffer.payload, upload_buffer.payload_size);
 
-                    // writes the same file on local sync dir
-                    temp_file.write(upload_buffer.payload, upload_buffer.payload_size);
+                    // // writes the same file on local sync dir
+                    // temp_file.write(upload_buffer.payload, upload_buffer.payload_size);
                     
                     // adjusts payload size on the last packet to save network bandwith
                     std::size_t bytes_read = static_cast<std::size_t>(file.gcount());
                     if(packet_index == expected_packets - 1) 
                     {
-                        // resizes buffer to actual read buffer size
-                        char* resized_buffer = new char[bytes_read];
-                        std::memcpy(resized_buffer, upload_buffer.payload, bytes_read);
-                        delete[] upload_buffer.payload;  // deletes current payload
-                        upload_buffer.payload = resized_buffer;
+                        // // resizes buffer to actual read buffer size
+                        // char* resized_buffer = new char[bytes_read+1];
+                        // std::memcpy(resized_buffer, upload_buffer.payload, bytes_read);
+                        // delete[] upload_buffer.payload;  // deletes current payload
+                        // upload_buffer.payload = resized_buffer;
+                        upload_buffer.payload_size = bytes_read;
                     }
 
                     // adds current file buffer packet to sender buffer
@@ -243,7 +245,7 @@ void Client::upload_command_(std::string args, std::string reason)
                 temp_file.close();
 
                 // removes temp extension from file name
-                rename_replacing(temp_file_path, local_file_path);
+                // rename_replacing(temp_file_path, local_file_path);
                 return;
             }
         }

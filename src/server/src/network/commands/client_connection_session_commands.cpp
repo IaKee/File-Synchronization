@@ -682,7 +682,7 @@ void ClientSession::client_sent_sdownload_(std::string args, packet buffer, std:
     }
 }
 
-void ClientSession::client_sent_supload_(std::string args, std::string arg2)
+void ClientSession::client_sent_supload_(std::string args, std::string arg2, char* payload, size_t payload_size, int sequence_number)
 {
     // user sent back server file upload request
     // operation failed
@@ -693,6 +693,63 @@ void ClientSession::client_sent_supload_(std::string args, std::string arg2)
         std::string output = get_identifier() + " Server requested download of file \"";
         output += args + "\" failed!";
         aprint(output, 2);
+    }
+    else if(payload != nullptr)
+    {
+        // user is sending some file to server - keeping a local copy
+        std::string file_path = args;
+        file_path.erase(
+            std::remove_if(
+                file_path.begin(), 
+                file_path.end(), 
+                [](char c) 
+                {
+                    return c == '\'' || c == '\"';
+                }), 
+            file_path.end());
+
+        std::string local_file_path = directory_path_ + args;
+
+        // given path is valid - creates file lock
+        if(file_mtx_.find(file_path) == file_mtx_.end())
+        {
+            auto new_mutex = std::make_shared<std::shared_mutex>();
+            file_mtx_.emplace(args, std::move(new_mutex));
+        }
+        
+        // requests newly created file lock
+        {
+            std::unique_lock<std::shared_mutex> file_lock(*file_mtx_[file_path]);
+
+            std::ofstream file;
+
+            if(sequence_number == 0)
+            {
+                file = std::ofstream(local_file_path, std::ios::binary);
+            }
+            else
+            {
+                file = std::ofstream(local_file_path, std::ios::app | std::ios::binary);
+            }
+
+            if(!file.is_open()) 
+            {
+                std::string output = "Local machine could not acess given file: ";
+                output += "\"" + local_file_path + "\"!";
+                aprint(output, 3);
+                return;
+            }
+            else
+            {      
+                while(!file.eof()){}
+                file.write(payload, payload_size);
+
+                // closes files after being done
+                file.close();
+
+                return;
+            }
+        }
     }
     else
     {
