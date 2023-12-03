@@ -100,6 +100,18 @@ Client::Client(
         session_id_ = connection_manager_.login(username_, machine_name_);
         aprint("Got following session id: " + std::to_string(session_id_));
 
+        if(!is_valid_path(default_sync_dir_path_))
+        {
+            if(!create_directory(default_sync_dir_path_))
+            {
+                throw std::runtime_error("Could not create sync_dir directory! Please check system permissions!");
+            }
+            else
+            {
+                aprint("Initializing client (root) files directory...");
+            }
+        }
+
         // sets running flag to true
         running_app_.store(true);
 

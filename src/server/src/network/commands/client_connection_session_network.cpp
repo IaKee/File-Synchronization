@@ -418,7 +418,7 @@ void ClientSession::session_sender_loop()
             if(!sender_buffer_.empty())
             {
                 // sends using previoulsy set callback method
-                this->send_packet_(sender_buffer_.front());
+                this->send_packet_(sender_buffer_.front(), socket_fd_);
 
                 sender_buffer_.erase(sender_buffer_.begin());
             }

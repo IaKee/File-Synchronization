@@ -117,6 +117,8 @@ void ClientSession::client_requested_delete_(std::string args, packet buffer, st
             if(file_mtx_.find(file_name) == file_mtx_.end())
             {
                 std::unique_lock<std::shared_mutex> file_lock(*file_mtx_[file_name]);
+
+                aprint(directory_path_, 0);
                 
                 // deletes file
                 delete_file(local_file_path);

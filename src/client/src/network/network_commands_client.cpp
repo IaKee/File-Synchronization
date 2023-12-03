@@ -107,7 +107,7 @@ void Client::request_delete_(std::string args)
     if(file_mtx_.find(file_path) == file_mtx_.end())
     {
         std::unique_lock<std::shared_mutex> file_lock(*file_mtx_[file_path]);
-        
+        // aprint("Gonna delete", 0);
         // deletes file
         delete_file(local_file_path);
 

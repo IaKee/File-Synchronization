@@ -230,8 +230,10 @@ void Client::sender_loop()
 
             if(sender_buffer_.empty() == false)
             {
+                aprint(sender_buffer_.front().command, 0);
+                aprint(std::to_string(connection_manager_.get_sock_fd()), 0);
                 // sends using previoulsy set callback method - buffer is treated as FIFO
-                connection_manager_.send_packet(sender_buffer_.front());
+                connection_manager_.send_packet(sender_buffer_.front(), connection_manager_.get_sock_fd());
 
                 sender_buffer_.erase(sender_buffer_.begin());
             }

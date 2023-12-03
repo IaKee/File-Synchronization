@@ -272,7 +272,7 @@ void async_cout::capture_loop()
                     }
                     default:
                     {
-                        if(isalnum(c))
+                        // if(isalnum(c))
                         {
                             add_to_buffer(c);
                             altprint("", false);
