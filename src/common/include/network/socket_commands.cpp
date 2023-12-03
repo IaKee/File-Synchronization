@@ -1,4 +1,5 @@
 #include "connection_manager.hpp"
+#include <functional>
 
 using namespace connection;
 
@@ -76,7 +77,7 @@ void ConnectionManager::send_data(char *buffer, std::size_t buffer_size, int soc
     {
         while (total_sent < buffer_size)
         {
-            aprint("Trying to send to socket " + std::to_string(socket), 0);
+            aprint("[Thread " + std::to_string(std::hash<std::thread::id> {} (std::this_thread::get_id())) + "] Trying to send to socket " + std::to_string(socket), 0);
             int bytes_sent = send(socket, buffer + total_sent, buffer_size - total_sent, 0);
             aprint("Sent to socket " + std::to_string(socket) + " " + std::to_string(bytes_sent) + "bytes.", 0);
 
@@ -138,7 +139,7 @@ void ConnectionManager::receive_data(char *buffer, std::size_t buffer_size, int 
         ssize_t total_received = 0;
         while (total_received < buffer_size)
         {
-            aprint("Trying to receive to socket " + std::to_string(socket), 0);
+            aprint("[Thread " + std::to_string(std::hash<std::thread::id> {} (std::this_thread::get_id())) + "] Trying to receive to socket " + std::to_string(socket), 0);
             ssize_t bytes_received = recv(socket, buffer + total_received, buffer_size - total_received, 0);
             aprint("Received from socket " + std::to_string(socket) + " " + std::to_string(bytes_received) + "bytes.", 0);
 

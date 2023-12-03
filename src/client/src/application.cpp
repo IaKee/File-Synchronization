@@ -115,6 +115,9 @@ Client::Client(
         // sets running flag to true
         running_app_.store(true);
 
+        start_receiver();
+        start_sender();
+
         // initializes user interface last
         UI_.start();
     }
