@@ -209,9 +209,6 @@ void ClientSession::add_packet_from_broadcast(packet& p)
     std::vector<std::string> received_buffer = split_buffer(buffer.command);
     int nargs = received_buffer.size();
 
-    aprint(received_buffer[0], 0);
-    aprint(std::to_string(nargs), 0);
-
     switch(nargs)
     {
         case 0:

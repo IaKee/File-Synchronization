@@ -82,13 +82,15 @@ void InotifyWatcher::monitor_directory()
 {
     while (is_running_.load()) 
     {
-        int length = read(watched_path_fd_, notify_buffer_, sizeof(notify_buffer_));
-        if (length < 0) 
+        int length = 0;
+        while(length < 0 && is_running_.load())
         {
-            throw std::runtime_error("[INOTIFY WATCHER] Error reading from inotify.");
-            is_running_.store(false);
-            return;
+            length = read(watched_path_fd_, notify_buffer_, sizeof(notify_buffer_));
         }
+
+        if(!is_running_.load()) break;
+
+        // test
 
         int i = 0;
         while (i < length) 

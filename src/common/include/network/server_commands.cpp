@@ -12,7 +12,6 @@ using namespace async_cout;
 
 ServerConnectionManager::ServerConnectionManager()
 {
-    aprint("Criour Server connections m", 0);
     // empty initializer
 }
 

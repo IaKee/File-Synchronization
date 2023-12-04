@@ -110,6 +110,9 @@ namespace client_application
             int delete_temporary_download_files_(std::string directory);
             void malformed_command_(std::string command);
 
+            // log events
+            const bool log_checksum = false;
+
         public:
             Client(
                 std::string username, 

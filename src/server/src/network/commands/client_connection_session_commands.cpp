@@ -115,7 +115,6 @@ void ClientSession::client_requested_delete_(std::string args, packet buffer, st
         try
         {
             // requests file mutex to delete entry
-            aprint(file_name, 0);
             if(file_mtx_.find(file_name) == file_mtx_.end())
             {
                 auto new_mutex = std::make_shared<std::shared_mutex>();
@@ -123,9 +122,7 @@ void ClientSession::client_requested_delete_(std::string args, packet buffer, st
                 aprint("created mutex", 0);
             }
 
-            aprint("vai locar?", 0);
             std::unique_lock<std::shared_mutex> file_lock(*file_mtx_[file_name]);
-            aprint("locou", 0);
 
             aprint(directory_path_, 0);
             
@@ -149,7 +146,6 @@ void ClientSession::client_requested_delete_(std::string args, packet buffer, st
         }
         catch(const std::exception& e)
         {
-            aprint("morri aq", 0);
             std::string output = get_identifier() + + " Exception raised while deleting file \"";
             output += file_name + "\": " + std::string(e.what());
             raise(output, 2);
@@ -272,9 +268,7 @@ void ClientSession::client_requested_download_(std::string args, char type)
         }
 
         {
-            aprint("1", 0);
             std::unique_lock<std::shared_mutex> file_lock(*file_mtx_[args]);
-            aprint("2", 0);
             
             std::string checksum = calculate_md5_checksum(local_file_path);
             std::ifstream sfile(local_file_path, std::ios::binary);
@@ -326,7 +320,6 @@ void ClientSession::client_requested_download_(std::string args, char type)
                         std::stringstream cr;
                         cr << type << "upload|" << args << "|" << checksum;
                         strcharray(cr.str(), supload_packet.command, sizeof(supload_packet.command));
-                        aprint(cr.str(), 0);
                         
                         // gathers payload from file stream
                         sfile.read(supload_packet.payload, supload_packet.payload_size);
@@ -335,12 +328,6 @@ void ClientSession::client_requested_download_(std::string args, char type)
                         std::size_t bytes_read = static_cast<std::size_t>(sfile.gcount());
                         if(packet_index == expected_packets - 1) 
                         {
-                            // aprint("4", 0);
-                            // // resizes buffer to actual read buffer size
-                            // char* resized_buffer = new char[bytes_read];
-                            // aprint(std::to_string(bytes_read), 0);
-                            // std::memcpy(resized_buffer, supload_packet.payload, bytes_read);
-                            // delete[] supload_packet.payload;  // deletes current payload
                             supload_packet.payload_size = bytes_read;
                         }
 
@@ -360,9 +347,6 @@ void ClientSession::client_requested_download_(std::string args, char type)
             }
         }
     }
-
-    aprint(args, 0);
-    aprint(local_file_path, 0);
 }
 
 void ClientSession::client_requested_get_sync_dir_()

@@ -115,7 +115,6 @@ void UserInterface::input_loop()
 
         
             *command_buffer_ = get_buffer();
-            //aprint("[UI]" + command_buffer_);
             
             std::istringstream iss(*command_buffer_);
             std::string token;

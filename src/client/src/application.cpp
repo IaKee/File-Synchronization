@@ -184,12 +184,12 @@ void Client::start_sync_(std::string new_path)
         }
         send_cv_.notify_one();
 
-        // // initializes inotify watcher module
-        // inotify_.init(
-        //     sync_dir_path_, 
-        //     inotify_buffer_, 
-        //     inotify_buffer_mtx_);
-        // inotify_.start_watching();
+        // initializes inotify watcher module
+        inotify_.init(
+            sync_dir_path_, 
+            inotify_buffer_, 
+            inotify_buffer_mtx_);
+        inotify_.start_watching();
         
         aprint("Synchronization routine initialized!");
         return;

@@ -44,7 +44,7 @@ void Server::handle_new_session(int new_socket, std::string username, std::strin
 				strcharray(
 					login_confirmation_command, 
 					login_confirmation_packet.command, 
-					sizeof(login_confirmation_packet.command));
+					sizeof(login_confirmation_packet.command)+1);
 				
 				// safety here is questionable, however this should be single threaded
 				internet_manager.send_packet(login_confirmation_packet, new_socket);
@@ -73,12 +73,6 @@ void Server::handle_new_session(int new_socket, std::string username, std::strin
 
 				std::string output = created_session->get_identifier();
 				output += " logged in!";
-				
-				/* hack to force start the synchronization
-            	packet sync_packet;
-            	std::string command = "clist";
-            	strcharray(command, sync_packet.command, sizeof(sync_packet.command));
-				created_session->add_packet_from_broadcast(sync_packet);*/
 				
 				// adds new session to the user manager
 				new_user->add_session(created_session.release());

@@ -163,7 +163,6 @@ void Server::main_loop()
 			{
 				// inserts prompt prefix before que actual user command
 				std::lock_guard<std::mutex> lock(ui_mutex);
-				//aprint("\t#> ", false);
 			}   
 
 			{

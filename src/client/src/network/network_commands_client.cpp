@@ -97,7 +97,6 @@ void Client::request_delete_(std::string args)
 
     // deletes file locally
     std::string local_file_path = sync_dir_path_ + file_path;
-    aprint(local_file_path, 0);
     if(is_valid_path(local_file_path) == false)
     {
         aprint("Could not acess given file!", 3);
@@ -108,7 +107,7 @@ void Client::request_delete_(std::string args)
     if(file_mtx_.find(file_path) == file_mtx_.end())
     {
         std::unique_lock<std::shared_mutex> file_lock(*file_mtx_[file_path]);
-        // aprint("Gonna delete", 0);
+
         // deletes file
         delete_file(local_file_path);
 
@@ -150,7 +149,7 @@ void Client::upload_command_(std::string args, std::string reason)
             }), 
         file_path.end());
 
-    std::string local_file_path = sync_dir_path_ + args;
+    std::string local_file_path = args;
     std::string temp_file_path = local_file_path + ".swizdownload";
     
 

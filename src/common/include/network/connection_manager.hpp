@@ -95,8 +95,8 @@ namespace connection
             std::thread send_th_;
 
             // logging
-            bool console_log = true;
-            bool log_every_packet = true;
+            const bool console_log = true;
+            const bool log_every_packet = false;
     };
 
     class ClientConnectionManager : public ConnectionManager
