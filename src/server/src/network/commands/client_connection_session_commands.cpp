@@ -183,72 +183,23 @@ void ClientSession::client_requested_slist_()
 void ClientSession::client_requested_flist_()
 {
     // client requested formatted list of every file
-    DIR* dir = opendir(directory_path_.c_str());
-    aprint(directory_path_.c_str(), 0);
-    if(dir == nullptr) 
+
+    const std::filesystem::path directory_path{directory_path_ + "/" + user->get_username() + "/"};
+    std::stringstream result;
+ 
+    // directory_iterator can be iterated using a range-for loop
+    for (auto const& dir_entry : std::filesystem::directory_iterator{directory_path})
     {
-        std::string output = get_identifier() + " Could not acess user folder!";
-        raise(output, 2);
+        result << dir_entry.path() << '\n';
+        aprint(dir_entry.path(), 0);
     }
 
-    // main output string
-    std::string output = "";
-    std::function<void(const std::string&)> list_files_recursively = [&](const std::string& current_path) 
-    {
-
-        DIR* dir = opendir(current_path.c_str());
-        if(dir == nullptr) 
-        {
-            std::string output = get_identifier() + " Could not acess \"";
-            output += current_path + "\" user folder!";
-            raise(output, 2);
-        }
-
-        dirent* entry;
-        while((entry = readdir(dir)) != nullptr) 
-        {
-            aprint("1" + std::string(entry->d_name, 0));
-            if(entry->d_type == DT_REG) 
-            { 
-                std::string file_path = current_path + "/" + entry->d_name;
-                file_path += "/";
-                file_path += entry->d_name;
-                aprint("2" + std::string(entry->d_name, 0));
-                struct stat file_info;
-                if(lstat(file_path.c_str(), &file_info) == 0) 
-                {
-                    char modification_time_buffer[100];
-                    char access_time_buffer[100];
-                    char change_creation_time_buffer[100];
-                    aprint("3" + std::string(entry->d_name, 0));
-                    output += "\n\t\t\tFile name: " + std::string(entry->d_name);
-                    output += "\n\t\t\tFile path: " + file_path;
-
-                    std::strftime(modification_time_buffer, sizeof(modification_time_buffer), "%c", std::localtime(&file_info.st_mtime));
-                    output += "\n\t\t\tModification time: " + std::string(modification_time_buffer);
-
-                    std::strftime(access_time_buffer, sizeof(access_time_buffer), "%c", std::localtime(&file_info.st_atime));
-                    output += "\n\t\t\tAccess time: " + std::string(access_time_buffer);
-
-                    std::strftime(change_creation_time_buffer, sizeof(change_creation_time_buffer), "%c", std::localtime(&file_info.st_ctime));
-                    output += "\n\t\t\tChange/creation time: " + std::string(change_creation_time_buffer);
-
-                }
-                else if(entry->d_type == DT_DIR && strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) 
-                {
-                    list_files_recursively(current_path + "/" + entry->d_name);
-                }
-            }
-        }
-        closedir(dir);
-    };
-
-    // gathers formatted file list
-    list_files_recursively(directory_path_);
-
+    std::string output = result.str();
+    aprint(output, 0);
+        
     // mounts packet to send
     packet flist_packet;
-    std::string command = "flist";
+    std::string command = "flist|server";
     strcharray(command, flist_packet.command, sizeof(flist_packet.command));
     int payload_size = output.size()+1;
     flist_packet.payload = new char[payload_size];
