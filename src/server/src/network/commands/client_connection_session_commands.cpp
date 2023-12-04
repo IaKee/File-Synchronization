@@ -252,107 +252,98 @@ void ClientSession::client_requested_adownload_(std::string args)
         // given path is valid - requests file lock
         if(file_mtx_.find(args) == file_mtx_.end())
         {
-            {
-                auto new_mutex = std::make_shared<std::shared_mutex>();
-                file_mtx_.emplace(args, std::move(new_mutex));
-            }
+            auto new_mutex = std::make_shared<std::shared_mutex>();
+            file_mtx_.emplace(args, std::move(new_mutex));
+        }
 
+        {
+            aprint("1", 0);
+            std::unique_lock<std::shared_mutex> file_lock(*file_mtx_[args]);
+            aprint("2", 0);
+            
+            std::string checksum = calculate_md5_checksum(local_file_path);
+            std::ifstream sfile(local_file_path, std::ios::binary);
+
+            if(!sfile.is_open()) 
             {
-                aprint("1", 0);
-                std::unique_lock<std::shared_mutex> file_lock(*file_mtx_[args]);
                 aprint("2", 0);
+                std::string output = get_identifier() + " Server could not bufferize file to send: " + args;
+                aprint(output, 2);
                 
-                std::string checksum = calculate_md5_checksum(local_file_path);
-                std::ifstream sfile(local_file_path, std::ios::binary);
+                // mounts packet
+                packet fail_packet;
+                std::string command = "aupload|" + args + "|fail";
+                strcharray(command, fail_packet.command, sizeof(fail_packet.command));
+                std::string reason = "Server could not bufferize file to send!";
+                fail_packet.payload_size = reason.size();
+                strcharray(reason, fail_packet.payload, reason.size());
 
-                if(!sfile.is_open()) 
+                // adds current file buffer packet to sender buffer
                 {
-                    aprint("2", 0);
-                    std::string output = get_identifier() + " Server could not bufferize file to send: " + args;
-                    aprint(output, 2);
+                    std::unique_lock<std::mutex> lock(send_mtx_);
+                    sender_buffer_.push_back(fail_packet);
+                }
+                send_cv_.notify_one();
+                return;
+            }
+            else
+            {   
+                aprint("3", 0);
+                // valid file     
+
+                // set packet defaults
+                int default_payload = 8192;  // 8kb
+                int packet_index = 0;
+                sfile.seekg(0, std::ios::end);
+                std::size_t file_size = sfile.tellg();
+                sfile.seekg(0, std::ios::beg);
+                size_t expected_packets = std::max((file_size + default_payload - 1) / default_payload, (size_t) 1);
+                
+                // reads file bufferizing it
+                while(!sfile.eof())
+                {
+                    // mounts a new buffer packet with default values
+                    char* payload_buffer = new char[default_payload];
+                    packet supload_packet;
+                    supload_packet.sequence_number = packet_index;
+                    supload_packet.expected_packets = expected_packets;
+                    supload_packet.payload_size = default_payload;
+                    supload_packet.payload = payload_buffer;
                     
-                    // mounts packet
-                    packet fail_packet;
-                    std::string command = "aupload|" + args + "|fail";
-                    strcharray(command, fail_packet.command, sizeof(fail_packet.command));
-                    std::string reason = "Server could not bufferize file to send!";
-                    fail_packet.payload_size = reason.size();
-                    strcharray(reason, fail_packet.payload, reason.size());
+                    // mounts packet command
+                    std::string command_response = "aupload|" + args + "|" + checksum;
+                    strcharray(command_response, supload_packet.command, sizeof(supload_packet.command));
+                    
+                    // gathers payload from file stream
+                    sfile.read(supload_packet.payload, supload_packet.payload_size);
+                    
+                    // adjusts payload size on the last packet to save network bandwith
+                    std::size_t bytes_read = static_cast<std::size_t>(sfile.gcount());
+                    if(packet_index == expected_packets - 1) 
+                    {
+                        // aprint("4", 0);
+                        // // resizes buffer to actual read buffer size
+                        // char* resized_buffer = new char[bytes_read];
+                        // aprint(std::to_string(bytes_read), 0);
+                        // std::memcpy(resized_buffer, supload_packet.payload, bytes_read);
+                        // delete[] supload_packet.payload;  // deletes current payload
+                        supload_packet.payload_size = bytes_read;
+                    }
 
                     // adds current file buffer packet to sender buffer
                     {
                         std::unique_lock<std::mutex> lock(send_mtx_);
-                        sender_buffer_.push_back(fail_packet);
+                        sender_buffer_.push_back(supload_packet);
                     }
                     send_cv_.notify_one();
-                    return;
+
+                    // increments packet index for the next iteration
+                    packet_index++;
                 }
-                else
-                {   
-                    aprint("3", 0);
-                    // valid file     
 
-                    // set packet defaults
-                    int default_payload = 8192;  // 8kb
-                    int packet_index = 0;
-                    sfile.seekg(0, std::ios::end);
-                    std::size_t file_size = sfile.tellg();
-                    sfile.seekg(0, std::ios::beg);
-                    size_t expected_packets = (file_size + default_payload - 1) / default_payload;
-                    
-                    // reads file bufferizing it
-                    while(!sfile.eof())
-                    {
-                        // mounts a new buffer packet with default values
-                        char* payload_buffer = new char[default_payload];
-                        packet supload_packet;
-                        supload_packet.sequence_number = packet_index;
-                        supload_packet.expected_packets = expected_packets;
-                        supload_packet.payload_size = default_payload;
-                        supload_packet.payload = payload_buffer;
-                        
-                        // mounts packet command
-                        std::string command_response = "aupload|" + args + "|" + checksum;
-                        strcharray(command_response, supload_packet.command, sizeof(supload_packet.command));
-                        
-                        // gathers payload from file stream
-                        sfile.read(supload_packet.payload, supload_packet.payload_size);
-                        
-                        // adjusts payload size on the last packet to save network bandwith
-                        std::size_t bytes_read = static_cast<std::size_t>(sfile.gcount());
-                        if(packet_index == expected_packets - 1) 
-                        {
-                            // aprint("4", 0);
-                            // // resizes buffer to actual read buffer size
-                            // char* resized_buffer = new char[bytes_read];
-                            // aprint(std::to_string(bytes_read), 0);
-                            // std::memcpy(resized_buffer, supload_packet.payload, bytes_read);
-                            // delete[] supload_packet.payload;  // deletes current payload
-                            supload_packet.payload_size = bytes_read;
-                        }
-
-                        // adds current file buffer packet to sender buffer
-                        {
-                            std::unique_lock<std::mutex> lock(send_mtx_);
-                            sender_buffer_.push_back(supload_packet);
-                        }
-                        send_cv_.notify_one();
-
-                        // increments packet index for the next iteration
-                        packet_index++;
-                    }
-
-                    // closes files after done
-                    sfile.close();
-                }
+                // closes files after done
+                sfile.close();
             }
-        }
-        else
-        {
-            // if there is no mutex for this file, an error has occured!
-            std::string output = get_identifier() + " No file mutex was found for file \"" + args + "\"!";
-            aprint(output, 2);
-            return;
         }
     }
 

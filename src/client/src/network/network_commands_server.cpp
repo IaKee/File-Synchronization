@@ -422,11 +422,12 @@ void Client::server_async_upload_command_(std::string args, std::string checksum
                 auto new_mutex = std::make_shared<std::shared_mutex>();
                 file_mtx_.emplace(args, std::move(new_mutex));
             }
+            aprint("3", 0);
             // requests file mutex to change original file
             std::unique_lock<std::shared_mutex> file_lock(*file_mtx_[args]);
                 
             std::string current_checksum = calculate_md5_checksum(temp_file_path);
-
+            aprint("4", 0);
             if(current_checksum != checksum)
             {
                 std::string output = "File md5 checksum for ";
@@ -439,12 +440,12 @@ void Client::server_async_upload_command_(std::string args, std::string checksum
                 output += "\"" + args + "\" is exactly the informed amount!";
                 aprint(output, 4);
             }
-
+            aprint("5", 0);
             // deletes temporary file replacing the original file
             rename_replacing(temp_file_path, local_file_path);
             return;
         }
-        aprint("3", 0);
+        aprint("6", 0);
         return;
     }
 }
