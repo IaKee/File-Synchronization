@@ -4,5 +4,5 @@ sync_dir_server
 *.mkv
 *.pdf
 *.swizdownload
-client
-server
+*client
+*server
