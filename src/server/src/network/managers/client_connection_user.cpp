@@ -113,6 +113,11 @@ client_connection::ClientSession* User::get_session(int sock_fd)
     return nullptr;
 }
 
+std::vector<ClientSession*> User::get_sessions()
+{
+    return sessions_;
+}
+
 void User::nuke()
 {
     // disconnects all active sessions

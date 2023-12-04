@@ -122,9 +122,10 @@ namespace client_connection
             void client_requested_flist_();
             void client_requested_download_(std::string args, char type);
             void client_requested_get_sync_dir_();
+            void server_requested_delete_(std::string file_name);
             void client_sent_clist_(packet buffer, std::string args = "");
             void client_sent_sdownload_(std::string args, packet buffer, std::string arg2 = "");
-            void client_sent_supload_(std::string args, std::string arg2, char* payload, size_t payload_size, int sequence_number);
+            void client_sent_supload_(std::string args, packet buffer, std::string arg2);
             std::string slist_();
 
             // main communication methods
@@ -164,6 +165,7 @@ namespace client_connection
             void add_session(ClientSession* new_session);
             void remove_session(int sock_fd, std::string reason = "");
             ClientSession* get_session(int sock_fd);
+            std::vector<ClientSession*> get_sessions();
             void nuke();  // disconnect all sessions
             void broadcast_other_sessions(int caller_sockfd, packet& p);
             void broadcast(packet& p);

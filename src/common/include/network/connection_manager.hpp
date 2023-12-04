@@ -96,7 +96,7 @@ namespace connection
 
             // logging
             const bool console_log = true;
-            const bool log_every_packet = false;
+            const bool log_every_packet = true;
     };
 
     class ClientConnectionManager : public ConnectionManager

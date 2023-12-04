@@ -94,45 +94,6 @@ void Client::request_delete_(std::string args)
         sender_buffer_.push_back(delete_packet);
     }
     send_cv_.notify_one();
-
-    // deletes file locally
-    std::string local_file_path = sync_dir_path_ + file_path;
-    if(is_valid_path(local_file_path) == false)
-    {
-        aprint("Could not acess given file!", 3);
-        return;
-    }
-    
-    // requests file mutex to delete entry
-    if(file_mtx_.find(file_path) == file_mtx_.end())
-    {
-        std::unique_lock<std::shared_mutex> file_lock(*file_mtx_[file_path]);
-
-        // deletes file
-        delete_file(local_file_path);
-
-        // removes file mutex from internal list
-        auto it = file_mtx_.find(file_path);
-        if(it != file_mtx_.end())
-        {
-            file_mtx_.erase(it);
-            return;
-        }
-        else
-        {
-            std::string output = "Could not find a file mutex for \"";
-            output += file_path + "\"!";
-            raise(output, 3);
-            return;
-        }
-    }
-    else
-    {
-        std::string output = "Could not find a file mutex for \"";
-        output += args + "\"!";
-        raise(output, 3);
-        return;
-    }
 }
 
 void Client::upload_command_(std::string args, std::string reason)

@@ -110,7 +110,7 @@ void ClientSession::client_requested_delete_(std::string args, packet buffer, st
         // valid path, propagates, then deletes file
 
         // propagates user delete command
-        broadcast_user_callback_(socket_fd_, buffer);
+        // broadcast_user_callback_(socket_fd_, buffer);
 
         try
         {
@@ -129,6 +129,11 @@ void ClientSession::client_requested_delete_(std::string args, packet buffer, st
             // deletes file
             aprint(local_file_path, 0);
             delete_file(local_file_path);
+
+            for(auto session : user->get_sessions())
+            {
+                session->server_requested_delete_(file_name);
+            }            
 
             // after deleting - removes file mutex from internal list
             auto it = file_mtx_.find(file_name);
@@ -151,6 +156,23 @@ void ClientSession::client_requested_delete_(std::string args, packet buffer, st
             raise(output, 2);
         }
     }
+}
+
+void ClientSession::server_requested_delete_(std::string file_name)
+{
+    // mounts fail packet
+    packet packet;
+    std::string command_string = "delete|" + file_name;
+    strcharray(command_string, packet.command, sizeof(packet.command));
+    packet.payload_size = 0;
+
+    // requests send mutex
+    {
+        std::unique_lock<std::mutex> lock(send_mtx_);
+        sender_buffer_.push_back(packet);
+    }
+    send_cv_.notify_one();
+    return;
 }
 
 void ClientSession::client_requested_slist_()
@@ -666,7 +688,7 @@ void ClientSession::client_sent_sdownload_(std::string args, packet buffer, std:
     }
 }
 
-void ClientSession::client_sent_supload_(std::string args, std::string arg2, char* payload, size_t payload_size, int sequence_number)
+void ClientSession::client_sent_supload_(std::string args, packet buffer, std::string arg2)
 {
     // user sent back server file upload request
     // operation failed
@@ -678,7 +700,7 @@ void ClientSession::client_sent_supload_(std::string args, std::string arg2, cha
         output += args + "\" failed!";
         aprint(output, 2);
     }
-    else if(payload != nullptr)
+    else if(buffer.payload != nullptr)
     {
         // user is sending some file to server - keeping a local copy
         std::string file_path = args;
@@ -707,7 +729,7 @@ void ClientSession::client_sent_supload_(std::string args, std::string arg2, cha
 
             std::ofstream file;
 
-            if(sequence_number == 0)
+            if(buffer.sequence_number == 0)
             {
                 file = std::ofstream(local_file_path, std::ios::binary);
             }
@@ -724,14 +746,24 @@ void ClientSession::client_sent_supload_(std::string args, std::string arg2, cha
                 return;
             }
             else
-            {      
+            {
                 // file.seekg(0, std::ios::end);
-                file.write(payload, payload_size);
+                file.write(buffer.payload, buffer.payload_size);
 
                 // closes files after being done
                 file.close();
 
-                delete[] payload;
+                delete[] buffer.payload;
+
+                if(buffer.sequence_number == buffer.expected_packets-1)
+                {
+                    for(auto session : user->get_sessions())
+                    {
+                        if(session->get_socket_fd() == this->socket_fd_)
+                            file_lock.unlock();
+                        session->client_requested_download_(file_name, 's');
+                    }
+                }
                 return;
             }
         }

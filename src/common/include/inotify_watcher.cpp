@@ -90,8 +90,6 @@ void InotifyWatcher::monitor_directory()
 
         if(!is_running_.load()) break;
 
-        // test
-
         int i = 0;
         while (i < length) 
         {

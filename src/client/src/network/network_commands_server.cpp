@@ -84,7 +84,7 @@ void Client::server_download_command_(std::string args, std::string reason)
         std::string command_response = "sdownload|" + file_path + "|fail";
         strcharray(command_response, fail_packet.command, sizeof(fail_packet.command));
         std::string args_response = "Given file was not found on user local machine.";
-        strcharray(args_response, fail_packet.payload, args_response.size());
+        strcharray(args_response, fail_packet.payload, args_response.size()+1);
         fail_packet.payload_size = args_response.size();
 
         // adds fail packet to sender buffer
@@ -277,7 +277,7 @@ void Client::server_upload_command_(std::string args, std::string checksum, pack
 
 void Client::server_delete_file_command_(std::string args, packet buffer, std::string arg2)
 {
-    std::string local_file_path = sync_dir_path_ + args;
+    std::string local_file_path = sync_dir_path_ + "/" + args;
     
     if(arg2 == "fail")
     {
@@ -297,7 +297,7 @@ void Client::server_delete_file_command_(std::string args, packet buffer, std::s
         std::string command_response = "delete|" + args + "|fail";
         strcharray(command_response, fail_packet.command, sizeof(fail_packet.command));
         std::string args_response = "Given file was not found on user local machine.";
-        strcharray(args_response, fail_packet.payload, args_response.size());
+        strcharray(args_response, fail_packet.payload, args_response.size()+1);
         fail_packet.payload_size = args_response.size();
 
         // adds to sender buffer
@@ -334,6 +334,21 @@ void Client::server_delete_file_command_(std::string args, packet buffer, std::s
             {
                 std::unique_lock<std::shared_mutex> file_lock(*file_mtx_[args]);
                 delete_file(local_file_path);
+
+                // removes file mutex from internal list
+                auto it = file_mtx_.find(args);
+                if(it != file_mtx_.end())
+                {
+                    file_mtx_.erase(it);
+                    return;
+                }
+                else
+                {
+                    std::string output = "Could not find a file mutex for \"";
+                    output += args + "\"!";
+                    raise(output, 3);
+                    return;
+                }
                 return;
             }
             else

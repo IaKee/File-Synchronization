@@ -171,7 +171,7 @@ void ClientSession::session_receiver_loop()
                     else if(command_name == "upload")
                     {
                         // user sent back server file upload request
-                        this->client_sent_supload_(args, checksum, buffer.payload, buffer.payload_size, buffer.sequence_number);
+                        this->client_sent_supload_(args, buffer, checksum);
                         break;
                     }
                     else
@@ -322,7 +322,7 @@ void ClientSession::add_packet_from_broadcast(packet& p)
             else if(command_name == "upload")
             {
                 // user sent back server file upload request
-                this->client_sent_supload_(args, checksum, buffer.payload, buffer.payload_size, buffer.sequence_number);
+                this->client_sent_supload_(args, buffer, checksum);
                 break;
             }
             else

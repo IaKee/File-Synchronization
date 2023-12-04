@@ -204,7 +204,8 @@ void ServerConnectionManager::server_accept_loop(
 
                                     std::string args_response = "Exception ocurred registring new user:";
                                     args_response += std::string(e.what());
-                                    strcharray(args_response, refusal_packet.payload, args_response.size());
+                                    refusal_packet.payload = new char[args_response.size()+1];
+                                    strcharray(args_response, refusal_packet.payload, args_response.size()+1);
                                     refusal_packet.payload_size = args_response.size();
 
                                     {
