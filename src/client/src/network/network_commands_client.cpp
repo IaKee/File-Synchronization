@@ -280,6 +280,11 @@ void Client::list_command_(std::string args)
         return;
     }
     
+    aprint(clist_(), 0);
+}
+
+std::string Client::clist_()
+{
     const std::filesystem::path directory_path{default_sync_dir_path_};
     std::stringstream result;
  
@@ -289,82 +294,7 @@ void Client::list_command_(std::string args)
         result << dir_entry.path() << '\n';
     }
 
-    std::string output = result.str();
-    aprint(output, 0);
-    return;
-}
-
-
-std::string Client::clist_()
-{
-    // returns a string list of every file hosted
-    DIR* dir = opendir(sync_dir_path_.c_str());
-    if(dir == nullptr) 
-    {
-        std::string output = "Could not acess sync dir folder!";
-        raise(output, 3);
-    }
-
-    // main output string
-    std::string output = "";
-    std::function<void(const std::string&)> list_files_recursively = [&](const std::string& current_path) 
-    {
-
-        DIR* dir = opendir(current_path.c_str());
-        if(dir == nullptr) 
-        {
-            std::string output = "Could not acess \"";
-            output += current_path + "\" user folder!";
-            raise(output, 2);
-        }
-
-        dirent* entry;
-        while((entry = readdir(dir)) != nullptr) 
-        {
-            if(entry->d_type == DT_REG) 
-            { 
-                std::string file_path = current_path + "/" + entry->d_name;
-                file_path += "/";
-                file_path += entry->d_name;
-
-                struct stat file_info;
-                if(lstat(file_path.c_str(), &file_info) == 0) 
-                {
-                    // removes server filesystem prefix from file path
-                    std::string current_file_string = file_path;
-                    size_t pos = current_file_string.find(sync_dir_path_);
-                    if(pos != std::string::npos) 
-                    {
-                        current_file_string.erase(pos, sync_dir_path_.length());
-                    }
-
-                    if(output.size() > 0)
-                    {
-                        // theres a few files already
-                        output += "|" + current_file_string;
-                    }
-                    else
-                    {
-                        output += current_file_string;
-                    }
-
-                    //output += "\n\t\t\tFile name: " + std::string(entry->d_name);
-                    //output += "\n\t\t\tFile path: " + file_path;
-
-                }
-                else if(entry->d_type == DT_DIR && strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) 
-                {
-                    list_files_recursively(current_path + "/" + entry->d_name);
-                }
-            }
-        }
-        closedir(dir);
-    };
-
-    // gathers unformatted file list
-    list_files_recursively(sync_dir_path_);
-
-    return output;
+    return result.str();
 }
 
 int Client::delete_temporary_download_files_(std::string directory)

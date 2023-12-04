@@ -180,18 +180,33 @@ void ClientSession::client_requested_slist_()
     aprint(output, 2);
 }
 
+std::vector<std::string> ClientSession::get_files_user()
+{
+    // returns a vector of strings containing every file
+    // hosted by this session
+    std::vector<std::string> files;
+    const std::filesystem::path directory_path{directory_path_ + "/" + user->get_username() + "/"};
+
+    // directory_iterator can be iterated using a range-for loop
+    for (auto const& dir_entry : std::filesystem::directory_iterator{directory_path})
+    {
+        files.push_back(dir_entry.path().filename());
+    }
+
+    return files;
+}
+
 void ClientSession::client_requested_flist_()
 {
     // client requested formatted list of every file
 
-    const std::filesystem::path directory_path{directory_path_ + "/" + user->get_username() + "/"};
     std::stringstream result;
+    result << '\n';
  
     // directory_iterator can be iterated using a range-for loop
-    for (auto const& dir_entry : std::filesystem::directory_iterator{directory_path})
+    for (auto const& file : get_files_user())
     {
-        result << dir_entry.path() << '\n';
-        aprint(dir_entry.path(), 0);
+        result << file << '\n';
     }
 
     std::string output = result.str();
@@ -217,7 +232,7 @@ void ClientSession::client_requested_flist_()
     aprint(output, 2);
 }
 
-void ClientSession::client_requested_adownload_(std::string args)
+void ClientSession::client_requested_download_(std::string args, char type)
 {
     // user is requesting a file download to
     // keep in a non synchronized folder
@@ -229,7 +244,7 @@ void ClientSession::client_requested_adownload_(std::string args)
     {
         // invalid path, sends fail packet
         packet fail_packet;
-        std::string command = "aupload|" + args + "|fail";
+        std::string command = type + "upload|" + args + "|fail";
         strcharray(command, fail_packet.command, sizeof(fail_packet.command));
         std::string reason = "Could not find or acess given file!";
         fail_packet.payload = new char[reason.size()+1];
@@ -264,71 +279,70 @@ void ClientSession::client_requested_adownload_(std::string args)
             std::string checksum = calculate_md5_checksum(local_file_path);
             std::ifstream sfile(local_file_path, std::ios::binary);
 
-            if(!sfile.is_open()) 
-            {
-                aprint("2", 0);
-                std::string output = get_identifier() + " Server could not bufferize file to send: " + args;
-                aprint(output, 2);
-                
-                // mounts packet
-                packet fail_packet;
-                std::string command = "aupload|" + args + "|fail";
-                strcharray(command, fail_packet.command, sizeof(fail_packet.command));
-                std::string reason = "Server could not bufferize file to send!";
-                fail_packet.payload_size = reason.size();
-                strcharray(reason, fail_packet.payload, reason.size());
-
-                // adds current file buffer packet to sender buffer
+                if(!sfile.is_open()) 
                 {
-                    std::unique_lock<std::mutex> lock(send_mtx_);
-                    sender_buffer_.push_back(fail_packet);
-                }
-                send_cv_.notify_one();
-                return;
-            }
-            else
-            {   
-                aprint("3", 0);
-                // valid file     
+                    std::string output = get_identifier() + " Server could not bufferize file to send: " + args;
+                    aprint(output, 2);
+                    
+                    // mounts packet
+                    packet fail_packet;
+                    std::string command = type + "upload|" + args + "|fail";
+                    strcharray(command, fail_packet.command, sizeof(fail_packet.command));
+                    std::string reason = "Server could not bufferize file to send!";
+                    fail_packet.payload_size = reason.size();
+                    strcharray(reason, fail_packet.payload, reason.size());
 
-                // set packet defaults
-                int default_payload = 8192;  // 8kb
-                int packet_index = 0;
-                sfile.seekg(0, std::ios::end);
-                std::size_t file_size = sfile.tellg();
-                sfile.seekg(0, std::ios::beg);
-                size_t expected_packets = std::max((file_size + default_payload - 1) / default_payload, (size_t) 1);
-                
-                // reads file bufferizing it
-                while(!sfile.eof())
-                {
-                    // mounts a new buffer packet with default values
-                    char* payload_buffer = new char[default_payload];
-                    packet supload_packet;
-                    supload_packet.sequence_number = packet_index;
-                    supload_packet.expected_packets = expected_packets;
-                    supload_packet.payload_size = default_payload;
-                    supload_packet.payload = payload_buffer;
-                    
-                    // mounts packet command
-                    std::string command_response = "aupload|" + args + "|" + checksum;
-                    strcharray(command_response, supload_packet.command, sizeof(supload_packet.command));
-                    
-                    // gathers payload from file stream
-                    sfile.read(supload_packet.payload, supload_packet.payload_size);
-                    
-                    // adjusts payload size on the last packet to save network bandwith
-                    std::size_t bytes_read = static_cast<std::size_t>(sfile.gcount());
-                    if(packet_index == expected_packets - 1) 
+                    // adds current file buffer packet to sender buffer
                     {
-                        // aprint("4", 0);
-                        // // resizes buffer to actual read buffer size
-                        // char* resized_buffer = new char[bytes_read];
-                        // aprint(std::to_string(bytes_read), 0);
-                        // std::memcpy(resized_buffer, supload_packet.payload, bytes_read);
-                        // delete[] supload_packet.payload;  // deletes current payload
-                        supload_packet.payload_size = bytes_read;
+                        std::unique_lock<std::mutex> lock(send_mtx_);
+                        sender_buffer_.push_back(fail_packet);
                     }
+                    send_cv_.notify_one();
+                    return;
+                }
+                else
+                {   
+                    // valid file     
+                    // set packet defaults
+                    int default_payload = 8192;  // 8kb
+                    int packet_index = 0;
+                    sfile.seekg(0, std::ios::end);
+                    std::size_t file_size = sfile.tellg();
+                    sfile.seekg(0, std::ios::beg);
+                    size_t expected_packets = std::max((file_size + default_payload - 1) / default_payload, (size_t) 1);
+                    
+                    // reads file bufferizing it
+                    while(!sfile.eof())
+                    {
+                        // mounts a new buffer packet with default values
+                        char* payload_buffer = new char[default_payload];
+                        packet supload_packet;
+                        supload_packet.sequence_number = packet_index;
+                        supload_packet.expected_packets = expected_packets;
+                        supload_packet.payload_size = default_payload;
+                        supload_packet.payload = payload_buffer;
+                        
+                        // mounts packet command
+                        std::stringstream cr;
+                        cr << type << "upload|" << args << "|" << checksum;
+                        strcharray(cr.str(), supload_packet.command, sizeof(supload_packet.command));
+                        aprint(cr.str(), 0);
+                        
+                        // gathers payload from file stream
+                        sfile.read(supload_packet.payload, supload_packet.payload_size);
+                        
+                        // adjusts payload size on the last packet to save network bandwith
+                        std::size_t bytes_read = static_cast<std::size_t>(sfile.gcount());
+                        if(packet_index == expected_packets - 1) 
+                        {
+                            // aprint("4", 0);
+                            // // resizes buffer to actual read buffer size
+                            // char* resized_buffer = new char[bytes_read];
+                            // aprint(std::to_string(bytes_read), 0);
+                            // std::memcpy(resized_buffer, supload_packet.payload, bytes_read);
+                            // delete[] supload_packet.payload;  // deletes current payload
+                            supload_packet.payload_size = bytes_read;
+                        }
 
                     // adds current file buffer packet to sender buffer
                     {
@@ -349,6 +363,20 @@ void ClientSession::client_requested_adownload_(std::string args)
 
     aprint(args, 0);
     aprint(local_file_path, 0);
+}
+
+void ClientSession::client_requested_get_sync_dir_()
+{
+    // client requested formatted list of every file
+
+    std::stringstream result;
+    result << '\n';
+ 
+    // directory_iterator can be iterated using a range-for loop
+    for (auto const& file : get_files_user())
+    {
+        client_requested_download_(file, 's');
+    }
 }
 
 void ClientSession::client_sent_clist_(packet buffer, std::string args)

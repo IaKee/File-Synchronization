@@ -83,7 +83,6 @@ namespace client_application
             std::thread receiver_th_;
 
             // other private methods
-            bool set_sync_dir_(std::string new_directory);
             void start_sync_(std::string new_path = "");
             std::string clist_();
 

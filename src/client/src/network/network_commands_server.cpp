@@ -190,16 +190,18 @@ void Client::server_download_command_(std::string args, std::string reason)
 
 void Client::server_upload_command_(std::string args, std::string checksum, packet buffer)
 {
-    // server is sending some file
-    std::string local_file_path = sync_dir_path_ + args;
+    // server is sending some file to async download folder
+    std::string local_file_path = sync_dir_path_ + "/" + args;
     std::string temp_file_path = local_file_path + ".swizdownload";
     
+    aprint("1", 0);
     if(checksum == "fail")
     {
         // user requested file download failed
-        std::string output = "User requested file upload for \"" + args + "\" failed!";
+        std::string output = "User requested";
+        output += " file async download for \"" + args + "\" failed!";
         aprint(output, 4);
-        std::string reason = "Captured error: ";
+        std::string reason = "Captured error:";
         reason += std::string(buffer.payload, buffer.payload_size);
         aprint(reason, 4);
         return;
@@ -211,7 +213,7 @@ void Client::server_upload_command_(std::string args, std::string checksum, pack
     {
         // given file does not exist locally - informs server
         packet fail_packet;
-        std::string command_response = "supload|" + args + "|fail";
+        std::string command_response = "aupload|" + args + "|fail";
         strcharray(command_response, fail_packet.command, sizeof(fail_packet.command));
         std::string args_response = "Given file could not be created or accessed";
         args_response += "on user local machine.";
@@ -232,42 +234,42 @@ void Client::server_upload_command_(std::string args, std::string checksum, pack
     else 
     {
         // updates temporary file with payload
+        aprint("2", 0);
         temp_file.write(buffer.payload, buffer.payload_size);
         temp_file.close();
 
         // checks if the packet is last to overwrite original file
         if(buffer.sequence_number == buffer.expected_packets - 1)
         {
-            if(file_mtx_.find(args) != file_mtx_.end())
+            if(file_mtx_.find(args) == file_mtx_.end())
             {
-                // requests file mutex to change original file
-                std::unique_lock<std::shared_mutex> file_lock(*file_mtx_[args]);
-                    
-                std::string current_checksum = calculate_md5_checksum(temp_file_path);
-
-                if(current_checksum != checksum)
-                {
-                    std::string output = "File md5 checksum for";
-                    output += "\"" + args + "\" is different than the informed amount!";
-                    aprint(output, 4);
-                }
-                else
-                {
-                    std::string output = "File md5 checksum for";
-                    output += "\"" + args + "\" is exactly the informed amount!";
-                    aprint(output, 4);
-                }
-
-                // deletes temporaty file replacing the original file
-                rename_replacing(temp_file_path, local_file_path);
-                return;
+                auto new_mutex = std::make_shared<std::shared_mutex>();
+                file_mtx_.emplace(args, std::move(new_mutex));
+            }
+            aprint("3", 0);
+            // requests file mutex to change original file
+            std::unique_lock<std::shared_mutex> file_lock(*file_mtx_[args]);
+                
+            std::string current_checksum = calculate_md5_checksum(temp_file_path);
+            aprint("4", 0);
+            if(current_checksum != checksum)
+            {
+                std::string output = "File md5 checksum for ";
+                output += "\"" + args + "\" is different than the informed amount!";
+                aprint(output, 4);
             }
             else
             {
-                std::string output = "No file mutex was found for \"" + args + "\"!";
-                raise(output, 4);
+                std::string output = "File md5 checksum for ";
+                output += "\"" + args + "\" is exactly the informed amount!";
+                aprint(output, 4);
             }
+            aprint("5", 0);
+            // deletes temporary file replacing the original file
+            rename_replacing(temp_file_path, local_file_path);
+            return;
         }
+        aprint("6", 0);
         return;
     }
 }

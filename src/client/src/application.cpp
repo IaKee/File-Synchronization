@@ -100,20 +100,22 @@ Client::Client(
         session_id_ = connection_manager_.login(username_, machine_name_);
         aprint("Got following session id: " + std::to_string(session_id_));
 
-        if(!is_valid_path(default_sync_dir_path_))
-        {
-            if(!create_directory(default_sync_dir_path_))
-            {
-                throw std::runtime_error("Could not create sync_dir directory! Please check system permissions!");
-            }
-            else
-            {
-                aprint("Initializing client (root) files directory...");
-            }
-        }
+        // if(!is_valid_path(default_sync_dir_path_))
+        // {
+        //     if(!create_directory(default_sync_dir_path_))
+        //     {
+        //         throw std::runtime_error("Could not create sync_dir directory! Please check system permissions!");
+        //     }
+        //     else
+        //     {
+        //         aprint("Initializing client (root) files directory...");
+        //     }
+        // }
 
         // sets running flag to true
         running_app_.store(true);
+
+        start_sync_();
 
         start_receiver();
         start_sender();
@@ -148,64 +150,32 @@ void Client::start_sync_(std::string new_path)
     {
         // checks if the download directories were previously set
         // if not, uses the default path
-        if(sync_dir_path_.size() == 0)
+        if(sync_dir_path_.empty())
         {
             this->sync_dir_path_ = this->default_sync_dir_path_;
         }
-        if(async_dir_path_.size() == 0)
-        {
-            this->async_dir_path_ = this->default_async_dir_path_;
-        }
 
         // checks for system paths permissions on the given folders
-        if(!is_valid_path(sync_dir_path_))
+        if(is_valid_path(sync_dir_path_))
         {
-                            raise("Given sync dir path is not valid!");
+            if(!std::filesystem::remove_all(sync_dir_path_))
+            {
+                raise("Couldn't delete sync_dir");
             }
-                if(!is_valid_path(async_dir_path_))
-        {
-                            raise("Given async dir path is not valid!");
-            }
-        
-        // checks for temporary download files and removes them
-        int deleted_sync_temp_files = delete_temporary_download_files_(sync_dir_path_);
-        int deleted_async_temp_files = delete_temporary_download_files_(async_dir_path_);
-        if(deleted_sync_temp_files > 0)
-        {
-            std::string output = "Deleted " + std::to_string(deleted_sync_temp_files);
-            output += " temporary incomplete download files from the sync dir.";
-            aprint(output);
         }
-        else
+        if(!create_directory(sync_dir_path_))
         {
-            std::string output = "No temporary incomplete download files were found on the sync dir.";
-            aprint(output);
-        }
-        if(deleted_async_temp_files > 0)
-        {
-            std::string output = "Deleted " + std::to_string(deleted_sync_temp_files);
-            output += " temporary incomplete download files from the async dir.";
-            aprint(output);
-        }
-        else
-        {
-            std::string output = "No incomplete files were found on the async dir.";
+            raise("Couldn't update sync_dir");
         }
 
         // informs server to start sync by sending a list of files
         // mounts file list packet
         packet list_packet;
-        std::string list_command = "clist";
+        std::string list_command = "get_sync_dir";
         strcharray(
             list_command, 
             list_packet.command,
             sizeof(list_packet.command));
-        
-        // mounts file list and adds to packet payload
-        std::string file_list = clist_();
-        list_packet.payload_size = file_list.size() + 1;
-        list_packet.payload = new char[list_packet.payload_size];
-        strcharray(file_list, list_packet.payload, file_list.size());
 
         // requests lock to acess upload buffer
         {
@@ -214,12 +184,12 @@ void Client::start_sync_(std::string new_path)
         }
         send_cv_.notify_one();
 
-        // initializes inotify watcher module
-        inotify_.init(
-            sync_dir_path_, 
-            inotify_buffer_, 
-            inotify_buffer_mtx_);
-        inotify_.start_watching();
+        // // initializes inotify watcher module
+        // inotify_.init(
+        //     sync_dir_path_, 
+        //     inotify_buffer_, 
+        //     inotify_buffer_mtx_);
+        // inotify_.start_watching();
         
         aprint("Synchronization routine initialized!");
         return;

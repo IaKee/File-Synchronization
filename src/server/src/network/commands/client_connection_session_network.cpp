@@ -101,6 +101,11 @@ void ClientSession::session_receiver_loop()
                         this->client_sent_clist_(buffer);
                         break;
                     }
+                    else if (command_name == "get_sync_dir")
+                    {
+                        this->client_requested_get_sync_dir_();
+                        break;
+                    }
                     else
                     {
                         // malformed command
@@ -139,7 +144,7 @@ void ClientSession::session_receiver_loop()
                         // user is requesting a file download to
                         // keep in a non synchronized folder
                         // send as "aupload"
-                        this->client_requested_adownload_(args);
+                        this->client_requested_download_(args, 'a');
                         break;
                     }
                     else
@@ -204,6 +209,9 @@ void ClientSession::add_packet_from_broadcast(packet& p)
     std::vector<std::string> received_buffer = split_buffer(buffer.command);
     int nargs = received_buffer.size();
 
+    aprint(received_buffer[0], 0);
+    aprint(std::to_string(nargs), 0);
+
     switch(nargs)
     {
         case 0:
@@ -253,6 +261,11 @@ void ClientSession::add_packet_from_broadcast(packet& p)
                 this->client_sent_clist_(buffer);
                 break;
             }
+            else if (command_name == "get_sync_dir")
+            {
+                this->client_requested_get_sync_dir_();
+                break;
+            }
             else
             {
                 // malformed command
@@ -285,7 +298,7 @@ void ClientSession::add_packet_from_broadcast(packet& p)
                 // user is requesting a file download to
                 // keep in a non synchronized folder
                 // send as "aupload"
-                this->client_requested_adownload_(args);
+                this->client_requested_download_(args, 'a');
                 break;
             }
             else

@@ -71,6 +71,7 @@ namespace client_connection
             void session_sender_loop();
 
         private:
+            std::vector<std::string> get_files_user();
             // identifiers
             int socket_fd_;  // connection identifier
             std::string username_;
@@ -119,7 +120,8 @@ namespace client_connection
             void client_requested_delete_(std::string args, packet buffer, std::string arg2 = "");
             void client_requested_slist_();
             void client_requested_flist_();
-            void client_requested_adownload_(std::string args);
+            void client_requested_download_(std::string args, char type);
+            void client_requested_get_sync_dir_();
             void client_sent_clist_(packet buffer, std::string args = "");
             void client_sent_sdownload_(std::string args, packet buffer, std::string arg2 = "");
             void client_sent_supload_(std::string args, std::string arg2, char* payload, size_t payload_size, int sequence_number);
