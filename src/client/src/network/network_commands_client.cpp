@@ -49,7 +49,7 @@ void Client::request_list_server_(std::string args)
     // user requesting a list of files contained
     packet list_packet;
     
-    // mounts download command
+    // mounts list server command
     std::string list_command = "flist|server";
     strcharray(
         list_command, 
@@ -97,6 +97,7 @@ void Client::request_delete_(std::string args)
 
     // deletes file locally
     std::string local_file_path = sync_dir_path_ + file_path;
+    aprint(local_file_path, 0);
     if(is_valid_path(local_file_path) == false)
     {
         aprint("Could not acess given file!", 3);
@@ -196,7 +197,7 @@ void Client::upload_command_(std::string args, std::string reason)
                 std::size_t file_size = file.tellg();
                 file.seekg(0, std::ios::beg);
                 size_t expected_packets = (file_size + default_payload - 1) / default_payload;
-                // reads file bufferizingit
+                // reads file bufferizing it
                 while(!file.eof())
                 {
                     // mounts a new buffer packet with default values

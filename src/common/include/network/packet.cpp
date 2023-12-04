@@ -54,9 +54,11 @@ void ConnectionManager::receive_packet(packet* p, int sockfd, int timeout)
     {
         p->payload = new char[p->payload_size];
         receive_data(p->payload, p->payload_size, sockfd, timeout);
+        aprint("received packet with command: '" + std::string(p->command, 1024) + "' and payload of size " + std::to_string(p->payload_size), 2);
     }
     else
     {
         p->payload = nullptr;
+        aprint("received packet with command: '" + std::string(p->command, 1024) + "' and no payload", 2);
     }
 }

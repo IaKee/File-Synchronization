@@ -61,7 +61,7 @@ namespace client_application
             // file management
             std::string sync_dir_path_ = "";
             std::string async_dir_path_ = "";
-            const std::string default_sync_dir_path_ = "./sync dir";
+            const std::string default_sync_dir_path_ = "./sync_dir";
             const std::string default_async_dir_path_ = "./downloads";
 
             // mutexes

@@ -1,3 +1,8 @@
 *.o
 sync_dir
 sync_dir_server
+*.mkv
+*.pdf
+*.swizdownload
+client
+server

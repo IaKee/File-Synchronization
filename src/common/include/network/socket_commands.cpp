@@ -87,6 +87,10 @@ void ConnectionManager::send_data(char *buffer, std::size_t buffer_size, int soc
             }
             total_sent += bytes_sent;
         }
+    } 
+    else 
+    {
+        aprint("WARNING: socket " + std::to_string(socket) + " was not ready for writing!", 0);
     }
 }
 

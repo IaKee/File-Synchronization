@@ -94,12 +94,6 @@ void ClientSession::session_receiver_loop()
                         this->client_requested_slist_();
                         break;
                     }
-                    else if(command_name == "flist")
-                    {
-                        // client requested formatted list of every file
-                        this->client_requested_flist_();
-                        break;
-                    }
                     else if(command_name == "clist")
                     {
                         // client sent a list of file currently on their local machine
@@ -128,26 +122,24 @@ void ClientSession::session_receiver_loop()
                         this->client_requested_delete_(args, buffer);
                         break;
                     }
+                    else if(command_name == "flist")
+                    {
+                        // client requested formatted list of every file
+                        this->client_requested_flist_();
+                        break;
+                    }
                     else if(command_name == "clist")
                     {
                         // client listing command probably failed
                         this->client_sent_clist_(buffer, args);
                         break;
                     }
-                    else if(command_name == "adownload")
+                    else if(command_name == "download" || command_name == "adownload")
                     {
                         // user is requesting a file download to
                         // keep in a non synchronized folder
                         // send as "aupload"
                         this->client_requested_adownload_(args);
-                        break;
-                    }
-                    else if(command_name == "download")
-                    {
-                        // user is requesting a file download
-                        // NOTE: user seems to never need this...
-                        // as server already kindly sends whats missing
-                        // whenever checked
                         break;
                     }
                     else
@@ -288,20 +280,12 @@ void ClientSession::add_packet_from_broadcast(packet& p)
                 this->client_sent_clist_(buffer, args);
                 break;
             }
-            else if(command_name == "adownload")
+            else if(command_name == "download" || command_name == "adownload")
             {
                 // user is requesting a file download to
                 // keep in a non synchronized folder
                 // send as "aupload"
                 this->client_requested_adownload_(args);
-                break;
-            }
-            else if(command_name == "download")
-            {
-                // user is requesting a file download
-                // NOTE: user seems to never need this...
-                // as server already kindly sends whats missing
-                // whenever checked
                 break;
             }
             else
@@ -457,7 +441,8 @@ void ClientSession::disconnect(std::string reason)
     std::string command_response = "exit";
     strcharray(command_response, exit_packet.command, sizeof(exit_packet.command));
     std::string args_response = reason;
-    strcharray(args_response, exit_packet.payload, args_response.size());
+    exit_packet.payload = new char[args_response.size()+1];
+    strcharray(args_response, exit_packet.payload, args_response.size() + 1);
     exit_packet.payload_size = args_response.size();
 
     // adds to sender buffer
@@ -471,7 +456,7 @@ void ClientSession::disconnect(std::string reason)
     running_sender_.store(false);
     send_cv_.notify_one();
 
-    //close(socket_fd_);
+    // close(socket_fd_);
 }
 
 void ClientSession::send_packet_(const packet& p, int sockfd, int timeout)

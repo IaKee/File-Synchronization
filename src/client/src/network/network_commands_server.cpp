@@ -370,6 +370,7 @@ void Client::server_async_upload_command_(std::string args, std::string checksum
     std::string local_file_path = async_dir_path_ + args;
     std::string temp_file_path = local_file_path + ".swizdownload";
     
+    aprint("1", 0);
     if(checksum == "fail")
     {
         // user requested file download failed
@@ -409,41 +410,41 @@ void Client::server_async_upload_command_(std::string args, std::string checksum
     else 
     {
         // updates temporary file with payload
+        aprint("2", 0);
         temp_file.write(buffer.payload, buffer.payload_size);
         temp_file.close();
 
         // checks if the packet is last to overwrite original file
         if(buffer.sequence_number == buffer.expected_packets - 1)
         {
-            if(file_mtx_.find(args) != file_mtx_.end())
+            if(file_mtx_.find(args) == file_mtx_.end())
             {
-                // requests file mutex to change original file
-                std::unique_lock<std::shared_mutex> file_lock(*file_mtx_[args]);
-                    
-                std::string current_checksum = calculate_md5_checksum(temp_file_path);
+                auto new_mutex = std::make_shared<std::shared_mutex>();
+                file_mtx_.emplace(args, std::move(new_mutex));
+            }
+            // requests file mutex to change original file
+            std::unique_lock<std::shared_mutex> file_lock(*file_mtx_[args]);
+                
+            std::string current_checksum = calculate_md5_checksum(temp_file_path);
 
-                if(current_checksum != checksum)
-                {
-                    std::string output = "File md5 checksum for";
-                    output += "\"" + args + "\" is different than the informed amount!";
-                    aprint(output, 4);
-                }
-                else
-                {
-                    std::string output = "File md5 checksum for";
-                    output += "\"" + args + "\" is exactly the informed amount!";
-                    aprint(output, 4);
-                }
-
-                // deletes temporaty file replacing the original file
-                rename_replacing(temp_file_path, local_file_path);
-                return;
+            if(current_checksum != checksum)
+            {
+                std::string output = "File md5 checksum for ";
+                output += "\"" + args + "\" is different than the informed amount!";
+                aprint(output, 4);
             }
             else
             {
-                raise("No file mutex was found for \"" + args + "\"!", 4);
+                std::string output = "File md5 checksum for ";
+                output += "\"" + args + "\" is exactly the informed amount!";
+                aprint(output, 4);
             }
+
+            // deletes temporary file replacing the original file
+            rename_replacing(temp_file_path, local_file_path);
+            return;
         }
+        aprint("3", 0);
         return;
     }
 }

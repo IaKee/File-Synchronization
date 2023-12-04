@@ -101,18 +101,14 @@ void strcharray(std::string input_string, char* output_char_array, size_t max_si
 {
     if(input_string.size() > (max_size - 1))
     {
-        printf("%d", max_size);
         throw std::runtime_error("[UTILS] Given string \"" + input_string + "\" exceeds vector maximum size!");
     }
-
-    size_t copied_size = std::min(input_string.size(), max_size - 1);
-    strncpy(output_char_array, input_string.c_str(), copied_size);
-
-    // fills the remaining of the array with null characters
-    for (size_t i = copied_size; i < max_size; ++i) 
+    if (output_char_array == nullptr)
     {
-        output_char_array[i] = '\0';
+        throw std::runtime_error("[UTILS] Given input char array buffer is null! Input string was: " + input_string);
     }
+
+    strncpy(output_char_array, input_string.c_str(), max_size);
 }
 
 std::string charraystr(char* char_array, size_t size)
@@ -220,9 +216,9 @@ std::vector<std::vector<char>> bufferize_file(std::string file_path, std::size_t
 
 void rename_replacing(std::string& old_path, std::string& new_path)
 {
-    if(!std::rename(old_path.c_str(), new_path.c_str()))
+    if(std::rename(old_path.c_str(), new_path.c_str()) != 0)
     {
-        throw std::runtime_error("[UTILS] Could nome rename file " + old_path);
+        throw std::runtime_error("[UTILS] Could not rename file " + old_path);
     }
 }
 

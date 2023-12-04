@@ -119,9 +119,9 @@ void Client::receiver_loop()
                         this->server_download_command_(args);
                         break;
                     }
-                    else if(command_name == "list")
+                    else if(command_name == "list" || command_name == "flist")
                     {
-                        // recieved list request from server
+                        // recieved list answer from server
                         this->server_list_command_(args, buffer);
                         break;
                     }
@@ -146,6 +146,7 @@ void Client::receiver_loop()
                     else if(command_name == "aupload")
                     {
                         // server is sending some file to async download folder
+                        aprint("Im here", 0);
                         this->server_async_upload_command_(args, checksum, buffer);
                         break;
                     }
