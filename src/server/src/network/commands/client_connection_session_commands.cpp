@@ -541,7 +541,7 @@ void ClientSession::client_sent_clist_(packet buffer, std::string args)
                 sfile.seekg(0, std::ios::end);
                 std::size_t file_size = sfile.tellg();
                 sfile.seekg(0, std::ios::beg);
-                size_t expected_packets = (file_size + default_payload - 1) / default_payload;
+                size_t expected_packets = std::max((file_size + default_payload - 1) / default_payload, (size_t) 1);
                 
                 // reads file bufferizing it
                 while(!sfile.eof())
@@ -631,7 +631,7 @@ void ClientSession::client_sent_supload_(std::string args, packet buffer, std::s
         output += args + "\" failed!";
         aprint(output, 2);
     }
-    else if(buffer.payload != nullptr)
+    else
     {
         // user is sending some file to server - keeping a local copy
         std::string file_path = args;
@@ -678,13 +678,16 @@ void ClientSession::client_sent_supload_(std::string args, packet buffer, std::s
             }
             else
             {
-                // file.seekg(0, std::ios::end);
-                file.write(buffer.payload, buffer.payload_size);
+                if(buffer.payload_size > 0)
+                {
+                    // file.seekg(0, std::ios::end);
+                    file.write(buffer.payload, buffer.payload_size);
 
+                    delete[] buffer.payload;
+                }
+                
                 // closes files after being done
                 file.close();
-
-                delete[] buffer.payload;
 
                 if(buffer.sequence_number == buffer.expected_packets-1)
                 {
@@ -698,11 +701,6 @@ void ClientSession::client_sent_supload_(std::string args, packet buffer, std::s
                 return;
             }
         }
-    }
-    else
-    {
-        // malformed command
-        malformed_command_("supload");
     }
 }
 

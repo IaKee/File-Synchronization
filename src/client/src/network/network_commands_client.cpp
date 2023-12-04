@@ -96,7 +96,7 @@ void Client::request_delete_(std::string args)
     send_cv_.notify_one();
 }
 
-void Client::upload_command_(std::string args, std::string reason)
+void Client::upload_command_(std::string args, char type, std::string reason)
 {
     // user is sending some file to server - keeping a local copy
     std::string file_path = args;
@@ -110,8 +110,12 @@ void Client::upload_command_(std::string args, std::string reason)
             }), 
         file_path.end());
 
-    std::string local_file_path = args;
-    std::string temp_file_path = local_file_path + ".swizdownload";
+    std::string local_file_path;
+    if(type == 's')
+        local_file_path = sync_dir_path_ + "/" + args;
+    else
+        local_file_path = args;
+    // std::string temp_file_path = local_file_path + ".swizdownload";
     
 
     if(!is_valid_path(local_file_path))
@@ -139,7 +143,7 @@ void Client::upload_command_(std::string args, std::string reason)
             std::ifstream file(local_file_path, std::ios::binary);
 
             // also tries to write on temporary file on local sync dir
-            std::ofstream temp_file(temp_file_path, std::ios::app | std::ios::binary);
+            // std::ofstream temp_file(temp_file_path, std::ios::app | std::ios::binary);
 
             if(!file.is_open()) 
             {
@@ -156,7 +160,7 @@ void Client::upload_command_(std::string args, std::string reason)
                 file.seekg(0, std::ios::end);
                 std::size_t file_size = file.tellg();
                 file.seekg(0, std::ios::beg);
-                size_t expected_packets = (file_size + default_payload - 1) / default_payload;
+                size_t expected_packets = std::max((file_size + default_payload - 1) / default_payload, (size_t) 1);
                 // reads file bufferizing it
                 while(!file.eof())
                 {
@@ -203,7 +207,7 @@ void Client::upload_command_(std::string args, std::string reason)
 
                 // closes files after being done
                 file.close();
-                temp_file.close();
+                // temp_file.close();
 
                 // removes temp extension from file name
                 // rename_replacing(temp_file_path, local_file_path);

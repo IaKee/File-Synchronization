@@ -115,10 +115,11 @@ Client::Client(
         // sets running flag to true
         running_app_.store(true);
 
-        start_sync_();
-
         start_receiver();
         start_sender();
+        start_inotify();
+
+        start_sync_();
 
         // initializes user interface last
         UI_.start();
@@ -188,7 +189,8 @@ void Client::start_sync_(std::string new_path)
         inotify_.init(
             sync_dir_path_, 
             inotify_buffer_, 
-            inotify_buffer_mtx_);
+            inotify_buffer_mtx_,
+            inotify_cv_);
 
         aprint("Synchronization routine initialized!");
         return;

@@ -212,6 +212,44 @@ void Client::stop_sender()
     }
 }
 
+void Client::start_inotify()
+{
+    aprint("Starting up inotify module.", 2);
+    running_inotify_.store(true);
+    inotify_th_ = std::thread(
+        [this]()
+        {
+            inotify_loop();
+        });
+}
+
+void Client::stop_inotify()
+{
+    aprint("Stopping inotify module...", 2);
+    running_inotify_.store(false);
+    inotify_cv_.notify_one();
+    if(inotify_th_.joinable())
+    {
+        inotify_th_.join();
+    }
+}
+
+void Client::inotify_loop()
+{
+    running_inotify_.store(true);
+    while (running_inotify_.load() == true) {
+            std::unique_lock<std::mutex> lock(inotify_mtx_);
+            inotify_cv_.wait(lock, [this]() { return !inotify_buffer_.empty() || !running_inotify_.load(); });
+
+            if(!inotify_buffer_.empty())
+            {
+                process_inotify_commands_();
+            }
+
+        
+    }
+}
+
 void Client::sender_loop()
 {
     running_sender_.store(true);
@@ -228,12 +266,6 @@ void Client::sender_loop()
                 return;
             }
 
-            // process inotify events
-            if(!inotify_buffer_.empty())
-            {
-                process_inotify_commands_();
-            }
-
             if(!sender_buffer_.empty())
             {
                 // sends using previoulsy set callback method - buffer is treated as FIFO
@@ -241,6 +273,7 @@ void Client::sender_loop()
 
                 sender_buffer_.erase(sender_buffer_.begin());
             }
+
         }
         catch(const std::exception& e)
         {
@@ -252,4 +285,3 @@ void Client::sender_loop()
         send_cv_.notify_one();
     }
 }
-

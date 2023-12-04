@@ -137,8 +137,8 @@ int main(int argc, char* argv[])
     
     try
     {
-        client_application::Client app(username, server_ip, port);
-        app.start();
+        client_application::Client *app = new client_application::Client(username, server_ip, port);
+        app->start();
     }
     catch(const std::exception& e)
     {

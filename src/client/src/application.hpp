@@ -44,6 +44,7 @@ namespace client_application
             std::atomic<bool> running_sender_;
             std::atomic<bool> running_receiver_;
             std::atomic<bool> running_sync_;
+            std::atomic<bool> running_inotify_;
 
             // internal buffers
             std::string ui_buffer_;
@@ -69,10 +70,12 @@ namespace client_application
             std::mutex ui_buffer_mtx_;
             std::mutex send_mtx_;
             std::mutex receive_mtx_;
+            std::mutex inotify_mtx_;
 
             // condition variables
             std::condition_variable ui_cv_;
             std::condition_variable send_cv_;
+            std::condition_variable inotify_cv_;
 
             // benchmark
             std::chrono::high_resolution_clock::time_point ping_start_;
@@ -81,6 +84,7 @@ namespace client_application
             // threads
             std::thread sender_th_;
             std::thread receiver_th_;
+            std::thread inotify_th_;
 
             // other private methods
             void start_sync_(std::string new_path = "");
@@ -104,7 +108,7 @@ namespace client_application
             void request_async_download_(std::string args);
             void request_list_server_(std::string args);
             void request_delete_(std::string args);
-            void upload_command_(std::string args, std::string reason = "");
+            void upload_command_(std::string args, char type = 'a', std::string reason = "");
             void pong_command_();
             void list_command_(std::string args);
             int delete_temporary_download_files_(std::string directory);
@@ -132,5 +136,9 @@ namespace client_application
             void start_receiver();
             void stop_receiver();
             void receiver_loop();
+
+            void start_inotify();
+            void stop_inotify();
+            void inotify_loop();
     };
 }

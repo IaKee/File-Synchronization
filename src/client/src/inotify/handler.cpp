@@ -8,8 +8,8 @@ void Client::process_inotify_commands_()
 {
     // TODO: talvez mudar inotify buffer para deque, ja que estamos sempre
     // tirando o primeiro elemento
-    char* command;
-    strcharray(inotify_buffer_.front(), command, inotify_buffer_.size()+1);
+    char* command = new char[inotify_buffer_.front().size()+1];
+    strcharray(inotify_buffer_.front(), command, inotify_buffer_.front().size()+1);
     std::vector<std::string> sanitized_buffer = split_buffer(command);
     int inotify_nargs = sanitized_buffer.size();
     inotify_buffer_.erase(inotify_buffer_.begin());
@@ -23,7 +23,7 @@ void Client::process_inotify_commands_()
             if(type == "create" || type == "modify")
             {
                 // upload file to server
-                upload_command_(file_path);
+                upload_command_(file_path, 's');
                 break;
             }
             else if(type == "delete")

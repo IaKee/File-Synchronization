@@ -8,6 +8,9 @@
 #include <mutex>
 #include <list>
 #include <vector>
+#include <condition_variable>
+
+#include "asyncio/async_cout.hpp"
 
 namespace inotify_watcher
 {
@@ -26,7 +29,8 @@ namespace inotify_watcher
             void init(
                 std::string& path_to_watch, 
                 std::vector<std::string>& inotify_buffer,
-                std::mutex& inotify_buffer_mtx);
+                std::mutex& inotify_buffer_mtx,
+                std::condition_variable& inotify_cv);
 
             void start_watching();
             void stop_watching();
@@ -37,6 +41,7 @@ namespace inotify_watcher
 
         private:
             int watched_path_fd_;
+            int wd;
             
             std::thread monitor_thread_;
             std::atomic<bool> is_running_;
@@ -45,6 +50,8 @@ namespace inotify_watcher
             std::string* watched_path_;
             std::vector<std::string>* inotify_buffer_;
             std::mutex* inotify_buffer_mtx_;
+
+            std::condition_variable* inotify_cv_;
             
     };
 }

@@ -46,7 +46,7 @@ bool ConnectionManager::is_port_available(int port)
         raise("Error creating socket!");
         return false;
     }
-
+    
     struct sockaddr_in address;
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = INADDR_ANY;
@@ -119,6 +119,8 @@ std::string ConnectionManager::get_host_by_name(const std::string host_name)
     {
         raise("Error converting IP address!");
     }
+
+
 
     return ip;
 }

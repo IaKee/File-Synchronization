@@ -16,15 +16,10 @@
 #include <vector>
 #include <unistd.h>
 
-#define CRYPTOPP_ENABLE_NAMESPACE_WEAK 1
-#include <cryptopp/cryptlib.h>
-#include <cryptopp/md5.h>
-#include <cryptopp/hex.h>
-#include <cryptopp/files.h>
-
 // locals
 #include "utils.hpp"
 #include "external/json.hpp"
+#include "external/xxhash.hpp"
 
 using json = nlohmann::json;
 namespace fs = std::filesystem;
@@ -174,15 +169,34 @@ std::string get_file_name(std::string& path)
     return path_obj.filename().string();
 }
 
+std::string digest_to_string(const xxh::hash_t<64> &md) {
+    // Get the bytes from the digest
+    std::array<char, 2 * 1024 * 1024> bytes{};
+    bytes = reinterpret_cast<const std::array<char, 2 * 1024 * 1024> &>(md);
+    int i;
+    std::stringstream s;
+    for (i = 0; i < 8; i++) {
+        s << std::hex << (int) bytes[i];
+    }
+    return s.str();
+}
+
+
 std::string calculate_md5_checksum(const std::string& filepath) 
 {
-    CryptoPP::Weak1::MD5 md5;
-    std::string digest;
+    std::ifstream file(filepath, std::ios::binary);
+    std::array<char, 2 * 1024 * 1024> buffer{0};
+    xxh::hash_state_t<64> hashStream;
+    while (true) {
+        ssize_t readBytes = file.read(buffer.data(), buffer.size()).gcount();
+        if (readBytes <= 0) {
+            break;
+        }
+        hashStream.update(buffer);
+    }
+    xxh::hash_t<64> hash = hashStream.digest();
+    return std::to_string(hash);
 
-    CryptoPP::FileSource file(filepath.c_str(), true,
-        new CryptoPP::HashFilter(md5, new CryptoPP::HexEncoder(new CryptoPP::StringSink(digest))));
-
-    return digest;
 }
 
 std::vector<std::vector<char>> bufferize_file(std::string file_path, std::size_t buffer_size)

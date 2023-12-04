@@ -84,6 +84,7 @@ void Client::server_download_command_(std::string args, std::string reason)
         std::string command_response = "sdownload|" + file_path + "|fail";
         strcharray(command_response, fail_packet.command, sizeof(fail_packet.command));
         std::string args_response = "Given file was not found on user local machine.";
+        fail_packet.payload = new char[args_response.size()+1];
         strcharray(args_response, fail_packet.payload, args_response.size()+1);
         fail_packet.payload_size = args_response.size();
 
@@ -133,7 +134,7 @@ void Client::server_download_command_(std::string args, std::string reason)
                 file.seekg(0, std::ios::end);
                 std::size_t file_size = file.tellg();
                 file.seekg(0, std::ios::beg);
-                size_t expected_packets = (file_size + default_payload - 1) / default_payload;
+                size_t expected_packets = std::max((file_size + default_payload - 1) / default_payload, (size_t) 1);
                 
                 // reads file bufferizingit
                 while(!file.eof())
@@ -191,7 +192,9 @@ void Client::server_download_command_(std::string args, std::string reason)
 void Client::server_upload_command_(std::string args, std::string checksum, packet buffer)
 {
     // server is sending some file to async download folder
-    std::string local_file_path = sync_dir_path_ + "/" + args;
+    std::stringstream ss;
+    ss << sync_dir_path_<< '/' << args;
+    std::string local_file_path = ss.str();
     std::string temp_file_path = local_file_path + ".swizdownload";
     
     if(checksum == "fail")
@@ -267,7 +270,14 @@ void Client::server_upload_command_(std::string args, std::string checksum, pack
             }
 
             // deletes temporary file replacing the original file
-            rename_replacing(temp_file_path, local_file_path);
+            if(is_valid_path(local_file_path) && calculate_md5_checksum(local_file_path) == current_checksum)
+            {   
+                delete_file(temp_file_path);
+            }
+            else
+            {
+                rename_replacing(temp_file_path, local_file_path);
+            }
             return;
         }
 
@@ -297,6 +307,7 @@ void Client::server_delete_file_command_(std::string args, packet buffer, std::s
         std::string command_response = "delete|" + args + "|fail";
         strcharray(command_response, fail_packet.command, sizeof(fail_packet.command));
         std::string args_response = "Given file was not found on user local machine.";
+        fail_packet.payload = new char[args_response.size()+1];
         strcharray(args_response, fail_packet.payload, args_response.size()+1);
         fail_packet.payload_size = args_response.size();
 

@@ -24,7 +24,7 @@ OUT2	= common.o
 
 CC	 = g++
 FLAGS	 = -g -c -Wall
-LFLAGS	 = -lcryptopp -lpthread
+LFLAGS	 = -lpthread
 
 all: server client 
 
@@ -132,4 +132,4 @@ utils.o: ./src/common/include/utils.cpp
 
 
 clean:
-	rm -f $(OBJS) $(OUT)
+	rm -f $(OBJS) $(OUT) $(OBJS0) $(OUT0) $(OBJS1) $(OUT1) $(OBJS2) $(OUT2)
