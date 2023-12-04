@@ -160,13 +160,13 @@ void Client::start_sync_(std::string new_path)
         // checks for system paths permissions on the given folders
         if(!is_valid_path(sync_dir_path_))
         {
-            raise("Given sync dir path is not valid!");
-        }
-        if(!is_valid_path(async_dir_path_))
+                            raise("Given sync dir path is not valid!");
+            }
+                if(!is_valid_path(async_dir_path_))
         {
-            raise("Given async dir path is not valid!");
-        }
-
+                            raise("Given async dir path is not valid!");
+            }
+        
         // checks for temporary download files and removes them
         int deleted_sync_temp_files = delete_temporary_download_files_(sync_dir_path_);
         int deleted_async_temp_files = delete_temporary_download_files_(async_dir_path_);
@@ -203,8 +203,9 @@ void Client::start_sync_(std::string new_path)
         
         // mounts file list and adds to packet payload
         std::string file_list = clist_();
+        list_packet.payload_size = file_list.size() + 1;
+        list_packet.payload = new char[list_packet.payload_size];
         strcharray(file_list, list_packet.payload, file_list.size());
-        list_packet.payload_size = file_list.size();
 
         // requests lock to acess upload buffer
         {

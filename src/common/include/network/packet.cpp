@@ -18,9 +18,7 @@ void ConnectionManager::send_packet(const packet& p, int sockfd, int timeout)
     if(log_every_packet)
         aprint(
             "sending a packet of size " 
-            + std::to_string(sizeof(header_buffer)) 
-            + "b with the command:" 
-            + p.command);
+            + std::to_string(sizeof(header_buffer)));
     
     send_data(header_buffer, sizeof(header_buffer), sockfd, timeout);
 
@@ -29,6 +27,10 @@ void ConnectionManager::send_packet(const packet& p, int sockfd, int timeout)
     {
         send_data(p.payload, p.payload_size, sockfd, timeout);
         delete [] p.payload;
+        aprint("Sent packet with command: '" + std::string(p.command, 1024) + "' and payload of size " + std::to_string(p.payload_size), 2);
+    } else {
+        aprint("Sent packet with command: '" + std::string(p.command, 1024) + "' and no payload", 2);
+
     }
 }
 
@@ -39,10 +41,7 @@ void ConnectionManager::receive_packet(packet* p, int sockfd, int timeout)
     if(log_every_packet)   
         aprint(
             "expecting a packet of size " 
-            + std::to_string(sizeof(header_buffer)) 
-            + "b with the command:" 
-            + p->command
-            + " (this should be null - check for invalid memory references)");
+            + std::to_string(sizeof(header_buffer)));
 
     // tries to receive packet
     receive_data(header_buffer, sizeof(header_buffer), sockfd, timeout);

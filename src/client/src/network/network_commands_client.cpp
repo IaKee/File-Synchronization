@@ -279,77 +279,18 @@ void Client::list_command_(std::string args)
         this->malformed_command_("list " + args);
         return;
     }
-
-    DIR* dir = opendir(sync_dir_path_.c_str());
-    if(dir == nullptr) 
+    
+    const std::filesystem::path directory_path{default_sync_dir_path_};
+    std::stringstream result;
+ 
+    // directory_iterator can be iterated using a range-for loop
+    for (auto const& dir_entry : std::filesystem::directory_iterator{directory_path})
     {
-        raise("Could not access local sync_dir folder!", 3);
-        return;
+        result << dir_entry.path() << '\n';
     }
 
-    std::string output = "Currently these files are being hosted on sync_dir:";
-    std::function<void(const std::string&)> list_files_recursively = [&](const std::string& current_path) 
-    {
-        DIR* dir = opendir(current_path.c_str());
-        if(dir == nullptr) 
-        {
-            raise("Could not access or read from local sync_dir folder!", 3);
-        }
-
-        
-        dirent* entry;
-        while((entry = readdir(dir)) != nullptr) 
-        {
-            if(entry->d_type == DT_REG) 
-            { 
-                std::string file_path = current_path + "/" + entry->d_name;
-                file_path += "/";
-                file_path += entry->d_name;
-
-                struct stat file_info;
-                if(lstat(file_path.c_str(), &file_info) == 0) 
-                {
-                    char modification_time_buffer[100];
-                    char access_time_buffer[100];
-                    char change_creation_time_buffer[100];
-
-                    output += "\n\t\t\tFile name: " + std::string(entry->d_name);
-                    output += "\n\t\t\tFile path: " + file_path;
-
-                    std::strftime(
-                        modification_time_buffer, 
-                        sizeof(modification_time_buffer), 
-                        "%c", 
-                        std::localtime(&file_info.st_mtime));
-                    output += "\n\t\t\tModification time: " + std::string(modification_time_buffer);
-
-                    std::strftime(
-                        access_time_buffer, 
-                        sizeof(access_time_buffer), 
-                        "%c", 
-                        std::localtime(&file_info.st_atime));
-                    output += "\n\t\t\tAccess time: " + std::string(access_time_buffer);
-
-                    std::strftime(
-                        change_creation_time_buffer, 
-                        sizeof(change_creation_time_buffer), 
-                        "%c", 
-                        std::localtime(&file_info.st_ctime));
-                    output += "\n\t\t\tChange/creation time: " + std::string(change_creation_time_buffer);
-
-                }
-                else if(entry->d_type == DT_DIR && strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) 
-                {
-                    list_files_recursively(current_path + "/" + entry->d_name);
-                }
-            }
-        }
-        closedir(dir);
-    };
-
-    list_files_recursively(sync_dir_path_);
-    
-    aprint(output, 3);
+    std::string output = result.str();
+    aprint(output, 0);
     return;
 }
 
