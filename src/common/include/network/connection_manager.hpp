@@ -96,7 +96,7 @@ namespace connection
 
             // logging
             const bool console_log = true;
-            const bool log_every_packet = true;
+            const bool log_every_packet = false;
     };
 
     class ClientConnectionManager : public ConnectionManager
@@ -110,7 +110,6 @@ namespace connection
 
             void connect_to_server(std::string ip_address, int port);
             int login(std::string username, std::string machine_name);
-            void replace_primary(std::string address, int port);
         private:
             std::atomic<bool> is_connected_;
 
@@ -127,22 +126,12 @@ namespace connection
 
             // start main server functions - opens main socket for further connections
             void open_server();
-
-            // console logging
-            void enable_log();
-            void disable_log();
             
             // main accept loop
             void start_accept_loop();
             void stop_accept_loop();
             void server_accept_loop(
                 std::function<void(int, std::string, std::string)> connection_stablished_callback = nullptr);
-
-            // operating mode and backups
-            void check_primary_server();
-            void check_for_elections();
-            void start_election();
-            void set_server_as_backup(std::string address, int port);
 
         private:
             // multithreading & synchronization

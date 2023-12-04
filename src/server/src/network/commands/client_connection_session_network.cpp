@@ -165,7 +165,7 @@ void ClientSession::session_receiver_loop()
                     if(command_name == "sdownload")
                     {
                         // user is sending some file
-                        this->client_sent_sdownload_(args, buffer, checksum);
+                        this->client_requested_download_(args, 's');
                         break;
                     }
                     else if(command_name == "upload")
@@ -316,7 +316,7 @@ void ClientSession::add_packet_from_broadcast(packet& p)
             if(command_name == "sdownload")
             {
                 // user is sending some file
-                this->client_sent_sdownload_(args, buffer, checksum);
+                this->client_requested_download_(args, 's');
                 break;
             }
             else if(command_name == "upload")

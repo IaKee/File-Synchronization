@@ -383,6 +383,19 @@ void ClientSession::client_requested_get_sync_dir_()
     {
         client_requested_download_(file, 's');
     }
+
+    // invalid path, sends fail packet
+    packet packet;
+    std::string command = "sync_dir_end";
+    strcharray(command, packet.command, sizeof(packet.command)+1);
+    packet.payload_size = 0;
+
+     // adds current file buffer packet to sender buffer
+    {
+        std::unique_lock<std::mutex> lock(send_mtx_);
+        sender_buffer_.push_back(packet);
+    }
+    send_cv_.notify_one();
 }
 
 void ClientSession::client_sent_clist_(packet buffer, std::string args)
@@ -606,88 +619,6 @@ void ClientSession::client_sent_clist_(packet buffer, std::string args)
     aprint(output, 2);
 }
 
-void ClientSession::client_sent_sdownload_(std::string args, packet buffer, std::string arg2)
-{
-    // user is sending some file
-    std::string file_name = args;
-    if(arg2 == "fail")
-    {
-        // command failed
-        std::string output = get_identifier() + " Server requested upload of file \"";
-        output += args + "\" failed!";
-        aprint(output, 2);
-    }
-    else
-    {
-        // user is sending some file
-        // server is sending some file
-        std::string local_file_path = directory_path_ + args;
-        std::string temp_file_path = local_file_path + ".swizdownload";
-        
-        if(arg2 == "fail")
-        {
-            std::string output = get_identifier() + " Download request failed!";
-            aprint(output, 2);
-            return;
-        }
-
-        // tries to write on temporary file
-        std::ofstream temp_file(temp_file_path, std::ios::app | std::ios::binary);
-        if(!temp_file) 
-        {
-            // given file does not exist locally - informs server
-            packet fail_packet;
-            std::string command_response = "sdownload|" + args + "|fail";
-            strcharray(command_response, fail_packet.command, sizeof(fail_packet.command));
-            std::string args_response = "Given file could not be created or accessed";
-            args_response += "on user server folder.";
-            strcharray(args_response, fail_packet.payload, args_response.size());
-            fail_packet.payload_size = args_response.size();
-
-            // adds to sender buffer
-            {
-                std::unique_lock<std::mutex> lock(send_mtx_);
-                sender_buffer_.push_back(fail_packet);
-            }
-            send_cv_.notify_one();
-
-            std::string output = get_identifier() + " Could not write on file \"";
-            output += file_name + "\" sent by user!";
-            aprint(output, 2);
-            return;
-        }
-        else 
-        {
-            // updates temporary file with payload
-            temp_file.write(buffer.payload, buffer.payload_size);
-            temp_file.close();
-
-            // checks if the packet is last to overwrite original file
-            if(buffer.sequence_number == buffer.expected_packets - 1)
-            {
-                if(file_mtx_.find(file_name) != file_mtx_.end())
-                {
-                    // requests file mutex to change original file
-                    std::unique_lock<std::shared_mutex> file_lock(*file_mtx_[file_name]);
-                        
-                    std::string current_checksum = calculate_md5_checksum(temp_file_path);
-
-                    // deletes temporaty file replacing the original file
-                    rename_replacing(temp_file_path, local_file_path);
-                    return;
-                }
-                else
-                {
-                    std::string output = get_identifier() + " No file mutex was found for \"";
-                    output += file_name + "\"!";
-                    raise(output, 2);
-                }
-            }
-            return;
-        }
-    }
-}
-
 void ClientSession::client_sent_supload_(std::string args, packet buffer, std::string arg2)
 {
     // user sent back server file upload request
@@ -827,9 +758,6 @@ std::string ClientSession::slist_()
                     {
                         output += current_file_string;
                     }
-
-                    //output += "\n\t\t\tFile name: " + std::string(entry->d_name);
-                    //output += "\n\t\t\tFile path: " + file_path;
 
                 }
                 else if(entry->d_type == DT_DIR && strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) 

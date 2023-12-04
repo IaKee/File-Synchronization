@@ -124,7 +124,6 @@ namespace client_connection
             void client_requested_get_sync_dir_();
             void server_requested_delete_(std::string file_name);
             void client_sent_clist_(packet buffer, std::string args = "");
-            void client_sent_sdownload_(std::string args, packet buffer, std::string arg2 = "");
             void client_sent_supload_(std::string args, packet buffer, std::string arg2);
             std::string slist_();
 

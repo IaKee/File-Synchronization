@@ -33,7 +33,6 @@ ConnectionManager::~ConnectionManager()
         send_status_.notify_all();
         send_th_.join();
     }
-    
 }
 
 bool ConnectionManager::is_port_available(int port) 

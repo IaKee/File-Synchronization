@@ -9,7 +9,7 @@ void Client::process_inotify_commands_()
     // TODO: talvez mudar inotify buffer para deque, ja que estamos sempre
     // tirando o primeiro elemento
     char* command;
-    strcharray(inotify_buffer_.front(), command, inotify_buffer_.size());
+    strcharray(inotify_buffer_.front(), command, inotify_buffer_.size()+1);
     std::vector<std::string> sanitized_buffer = split_buffer(command);
     int inotify_nargs = sanitized_buffer.size();
     inotify_buffer_.erase(inotify_buffer_.begin());

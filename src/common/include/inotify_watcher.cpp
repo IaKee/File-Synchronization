@@ -82,29 +82,32 @@ void InotifyWatcher::monitor_directory()
 {
     while (is_running_.load()) 
     {
-        int length = 0;
-        while(length < 0 && is_running_.load())
+        printf("Before read");
+        ssize_t length = -1;
+        while(length < 0)
         {
-            length = read(watched_path_fd_, notify_buffer_, sizeof(notify_buffer_));
+            read(watched_path_fd_, notify_buffer_, sizeof(notify_buffer_));
         }
+        printf("After read");
 
-        if(!is_running_.load()) break;
-
-        int i = 0;
+        ssize_t i = 0;
         while (i < length) 
         {
             struct inotify_event *event = reinterpret_cast<struct inotify_event*>(&notify_buffer_[i]);
 
             if(event->mask & (IN_CREATE | IN_MODIFY | IN_DELETE)) 
             {
+                printf("Before if");
                 if(!(event->mask & IN_ISDIR)) 
                 {
+                    printf("In if");
                     FileEvent file_event;
                     file_event.filename = event->name;
                     file_event.mask = event->mask;
 
                     process_event(file_event);
                 }
+                printf("After if");
             }
 
             i += sizeof(struct inotify_event) + event->len;

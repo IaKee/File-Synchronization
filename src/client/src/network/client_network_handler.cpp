@@ -88,6 +88,12 @@ void Client::receiver_loop()
                         this->pong_command_();
                         break;
                     }
+                    else if(command_name == "sync_dir_end")
+                    {
+                        // initializes inotify watcher module
+                        inotify_.start_watching();
+                        break;
+                    }
                     else
                     {
                         this->server_malformed_command_(command_name);
@@ -214,9 +220,9 @@ void Client::sender_loop()
         try
         {
             std::unique_lock<std::mutex> lock(send_mtx_);
-            send_cv_.wait(lock, [this]() { return !sender_buffer_.empty() || !running_sender_.load(); });
+            send_cv_.wait(lock, [this]() { return !sender_buffer_.empty() || !running_sender_.load() || !inotify_buffer_.empty(); });
 
-            if(running_sender_.load() == false)
+            if(!running_sender_.load())
             {
                 aprint("Stopping sender module...", 2);
                 return;
@@ -228,7 +234,7 @@ void Client::sender_loop()
                 process_inotify_commands_();
             }
 
-            if(sender_buffer_.empty() == false)
+            if(!sender_buffer_.empty())
             {
                 // sends using previoulsy set callback method - buffer is treated as FIFO
                 connection_manager_.send_packet(sender_buffer_.front(), connection_manager_.get_sock_fd());
