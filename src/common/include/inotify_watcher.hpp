@@ -30,7 +30,8 @@ namespace inotify_watcher
                 std::string& path_to_watch, 
                 std::vector<std::string>& inotify_buffer,
                 std::mutex& inotify_buffer_mtx,
-                std::condition_variable& inotify_cv);
+                std::condition_variable& inotify_cv,
+                std::vector<std::string>& files_being_modified);
 
             void start_watching();
             void stop_watching();
@@ -52,6 +53,7 @@ namespace inotify_watcher
             std::mutex* inotify_buffer_mtx_;
 
             std::condition_variable* inotify_cv_;
+            std::vector<std::string>* files_being_modified_;
             
     };
 }

@@ -32,12 +32,14 @@ void InotifyWatcher::init(
     std::string& path_to_watch, 
     std::vector<std::string>& inotify_buffer,
     std::mutex& inotify_buffer_mtx,
-    std::condition_variable& inotify_cv)
+    std::condition_variable& inotify_cv,
+    std::vector<std::string>& files_being_modified)
 {
     watched_path_ = &path_to_watch; 
     inotify_buffer_ = &inotify_buffer; 
     inotify_buffer_mtx_ = &inotify_buffer_mtx;
     inotify_cv_ = &inotify_cv;
+    files_being_modified_ = &files_being_modified;
     is_running_.store(false);
 }
 
@@ -113,7 +115,7 @@ void InotifyWatcher::monitor_directory()
 void InotifyWatcher::process_event(const FileEvent& event) 
 {
     // Ignore files that end with .swizdownload
-    if (event.filename.find(".swizdownload") != std::string::npos) 
+    if (event.filename.find(".swizdownload") != std::string::npos || std::find(files_being_modified_->begin(), files_being_modified_->end(), event.filename) !=  files_being_modified_->end()) 
     {
         return;
     }

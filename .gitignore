@@ -6,3 +6,4 @@ sync_dir_server
 *.swizdownload
 *client
 *server
+*.vscode

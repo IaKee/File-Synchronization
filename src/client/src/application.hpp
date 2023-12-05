@@ -53,6 +53,7 @@ namespace client_application
             std::vector<packet> sender_buffer_;
             std::vector<packet> receiver_buffer_;
             std::unordered_map<std::string, std::shared_ptr<std::shared_mutex>> file_mtx_;
+            std::vector<std::string> files_being_modified_;
 
             // modules
             connection::ClientConnectionManager connection_manager_;

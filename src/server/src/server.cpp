@@ -66,7 +66,7 @@ Server::Server()
 
 	internet_manager.open_server();
 
-	std::string addr = internet_manager.get_address();
+	std::string addr = internet_manager.get_host_by_name(machine_name);
 	int port = internet_manager.get_port();
 	aprint("Server running at " 
 		+ addr 

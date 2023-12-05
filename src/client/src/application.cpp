@@ -190,7 +190,8 @@ void Client::start_sync_(std::string new_path)
             sync_dir_path_, 
             inotify_buffer_, 
             inotify_buffer_mtx_,
-            inotify_cv_);
+            inotify_cv_,
+            files_being_modified_);
 
         aprint("Synchronization routine initialized!");
         return;

@@ -196,6 +196,8 @@ void Client::server_upload_command_(std::string args, std::string checksum, pack
     ss << sync_dir_path_<< '/' << args;
     std::string local_file_path = ss.str();
     std::string temp_file_path = local_file_path + ".swizdownload";
+
+    files_being_modified_.emplace_back(args);
     
     if(checksum == "fail")
     {
@@ -278,6 +280,7 @@ void Client::server_upload_command_(std::string args, std::string checksum, pack
             {
                 rename_replacing(temp_file_path, local_file_path);
             }
+            files_being_modified_.erase(std::find(files_being_modified_.begin(), files_being_modified_.end(), args));
             return;
         }
 
