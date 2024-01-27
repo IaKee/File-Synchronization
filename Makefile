@@ -1,135 +1,135 @@
-
 MAKEFLAGS += -j5
 
-OBJS	= main.o server_handler_user_interface.o client_connection_session.o client_connection_user.o client_connection_group.o client_connection.o client_connection_session_commands.o client_connection_session_network.o server.o server_handler_new_sessions.o 
-OUT	= server,client,common
+OBJDIR  = build
+BINDIR  = bin
 
-OBJS0	= smain.o server_handler_user_interface.o client_connection_session.o client_connection_user.o client_connection_group.o client_connection.o client_connection_session_commands.o client_connection_session_network.o server.o server_handler_new_sessions.o
+OBJS	= $(OBJDIR)/main.o $(OBJDIR)/server_handler_user_interface.o $(OBJDIR)/client_connection_session.o $(OBJDIR)/client_connection_user.o $(OBJDIR)/client_connection_group.o $(OBJDIR)/client_connection.o $(OBJDIR)/client_connection_session_commands.o $(OBJDIR)/client_connection_session_network.o $(OBJDIR)/server.o $(OBJDIR)/server_handler_new_sessions.o 
+OUT	    = $(BINDIR)/server,$(BINDIR)/client,$(OBJDIR)/common.o
+
+OBJS0	= $(OBJDIR)/smain.o $(OBJDIR)/server_handler_user_interface.o $(OBJDIR)/client_connection_session.o $(OBJDIR)/client_connection_user.o $(OBJDIR)/client_connection_group.o $(OBJDIR)/client_connection.o $(OBJDIR)/client_connection_session_commands.o $(OBJDIR)/client_connection_session_network.o $(OBJDIR)/server.o $(OBJDIR)/server_handler_new_sessions.o
 SOURCE0	= ./src/server/src/main.cpp ./src/server/src/server_handler_user_interface.cpp ./src/server/src/network/managers/client_connection_session.cpp ./src/server/src/network/managers/client_connection_user.cpp ./src/server/src/network/managers/client_connection_group.cpp ./src/server/src/network/client_connection.cpp ./src/server/src/network/commands/client_connection_session_commands.cpp ./src/server/src/network/commands/client_connection_session_network.cpp ./src/server/src/server.cpp ./src/server/src/server_handler_new_sessions.cpp ./src/server/tests/ex.cpp
 HEADER0	= 
 DEP0 	= 
-OUT0	= server
+OUT0	= $(BINDIR)/server
 
-OBJS1	= application.o cmain.o client_network_handler.o network_commands_client.o network_commands_server.o client_ui_handler.o handler.o 
+OBJS1	= $(OBJDIR)/application.o $(OBJDIR)/cmain.o $(OBJDIR)/client_network_handler.o $(OBJDIR)/network_commands_client.o $(OBJDIR)/network_commands_server.o $(OBJDIR)/client_ui_handler.o $(OBJDIR)/handler.o 
 SOURCE1	= ./src/client/src/application.cpp ./src/client/src/main.cpp ./src/client/src/network/client_network_handler.cpp ./src/client/src/network/network_commands_client.cpp ./src/client/src/network/network_commands_server.cpp ./src/client/src/ui/client_ui_handler.cpp ./src/client/src/inotify/handler.cpp
 HEADER1	= 
 DEP1 	= 
-OUT1	= client
+OUT1	= $(BINDIR)/client
 
-OBJS2	= inotify_watcher.o async_cout.o user_interface.o logging.o connection_manager.o server_commands.o socket_commands.o client_commands.o packet.o utils.o 
+OBJS2	= $(OBJDIR)/inotify_watcher.o $(OBJDIR)/async_cout.o $(OBJDIR)/user_interface.o $(OBJDIR)/logging.o $(OBJDIR)/connection_manager.o $(OBJDIR)/server_commands.o $(OBJDIR)/socket_commands.o $(OBJDIR)/client_commands.o $(OBJDIR)/packet.o $(OBJDIR)/utils.o 
 SOURCE2	= ./src/common/include/inotify_watcher.cpp ./src/common/include/asyncio/async_cout.cpp ./src/common/include/asyncio/user_interface.cpp ./src/common/include/network/logging.cpp ./src/common/include/network/connection_manager.cpp ./src/common/include/network/server_commands.cpp ./src/common/include/network/socket_commands.cpp ./src/common/include/network/client_commands.cpp ./src/common/include/network/packet.cpp ./src/common/include/utils.cpp
 HEADER2	= 
 DEP2 	=
-OUT2	= common.o
+OUT2	= $(OBJDIR)/common.o
 
-CC	 = g++
-FLAGS	 = -g -c -Wall
-LFLAGS	 = -lpthread
+CC	    = g++
+FLAGS	= -g -c -Wall
+LFLAGS	= -lpthread
 
-all: server client 
+all: $(BINDIR)/server $(BINDIR)/client 
 
-runclient: client
-	./client
+runclient: $(BINDIR)/client
+	$(BINDIR)/client
 
-runserver: server
-	./server
+runserver: $(BINDIR)/server
+	$(BINDIR)/server
 
 test: all
-	tmux new-session -s "server" -d "./server; read"
-	tmux split-window -h "sleep 2 && ./client iakee 0.0.0.0 65535; read"
+	tmux new-session -s "server" -d "$(BINDIR)/server; read"
+	tmux split-window -h "sleep 2 && $(BINDIR)/client iakee 0.0.0.0 65535; read"
 	tmux -2 attach-session -d
 
-server: $(OBJS0) $(LFLAGS) $(DEP0) $(OBJS2)
+$(BINDIR)/server: $(OBJS0) $(LFLAGS) $(DEP0) $(OBJS2)
 	$(CC) -g $(OBJS0) $(OBJS2) -o $(OUT0) $(LFLAGS)
 
-client: $(OBJS1) $(LFLAGS) $(DEP1) $(OBJS2)
+$(BINDIR)/client: $(OBJS1) $(LFLAGS) $(DEP1) $(OBJS2)
 	$(CC) -g $(OBJS1) $(OBJS2) -o $(OUT1) $(LFLAGS)
 
 # common: $(OBJS2) $(LFLAGS) $(DEP2)
 # 	$(CC) -g $(OBJS2) -o $(OUT2) $(LFLAGS)
 
-smain.o: ./src/server/src/main.cpp
-	$(CC) $(FLAGS) ./src/server/src/main.cpp -o smain.o
+$(OBJDIR)/smain.o: ./src/server/src/main.cpp
+	$(CC) $(FLAGS) ./src/server/src/main.cpp -o $(OBJDIR)/smain.o
 
-server_handler_user_interface.o: ./src/server/src/server_handler_user_interface.cpp
-	$(CC) $(FLAGS) ./src/server/src/server_handler_user_interface.cpp 
+$(OBJDIR)/server_handler_user_interface.o: ./src/server/src/server_handler_user_interface.cpp
+	$(CC) $(FLAGS) ./src/server/src/server_handler_user_interface.cpp -o $(OBJDIR)/server_handler_user_interface.o
 
-client_connection_session.o: ./src/server/src/network/managers/client_connection_session.cpp
-	$(CC) $(FLAGS) ./src/server/src/network/managers/client_connection_session.cpp 
+$(OBJDIR)/client_connection_session.o: ./src/server/src/network/managers/client_connection_session.cpp
+	$(CC) $(FLAGS) ./src/server/src/network/managers/client_connection_session.cpp -o $(OBJDIR)/client_connection_session.o
 
-client_connection_user.o: ./src/server/src/network/managers/client_connection_user.cpp
-	$(CC) $(FLAGS) ./src/server/src/network/managers/client_connection_user.cpp 
+$(OBJDIR)/client_connection_user.o: ./src/server/src/network/managers/client_connection_user.cpp
+	$(CC) $(FLAGS) ./src/server/src/network/managers/client_connection_user.cpp -o $(OBJDIR)/client_connection_user.o
 
-client_connection_group.o: ./src/server/src/network/managers/client_connection_group.cpp
-	$(CC) $(FLAGS) ./src/server/src/network/managers/client_connection_group.cpp 
+$(OBJDIR)/client_connection_group.o: ./src/server/src/network/managers/client_connection_group.cpp
+	$(CC) $(FLAGS) ./src/server/src/network/managers/client_connection_group.cpp -o $(OBJDIR)/client_connection_group.o
 
-client_connection.o: ./src/server/src/network/client_connection.cpp
-	$(CC) $(FLAGS) ./src/server/src/network/client_connection.cpp 
+$(OBJDIR)/client_connection.o: ./src/server/src/network/client_connection.cpp
+	$(CC) $(FLAGS) ./src/server/src/network/client_connection.cpp -o $(OBJDIR)/client_connection.o
 
-client_connection_session_commands.o: ./src/server/src/network/commands/client_connection_session_commands.cpp
-	$(CC) $(FLAGS) ./src/server/src/network/commands/client_connection_session_commands.cpp 
+$(OBJDIR)/client_connection_session_commands.o: ./src/server/src/network/commands/client_connection_session_commands.cpp
+	$(CC) $(FLAGS) ./src/server/src/network/commands/client_connection_session_commands.cpp -o $(OBJDIR)/client_connection_session_commands.o
 
-client_connection_session_network.o: ./src/server/src/network/commands/client_connection_session_network.cpp
-	$(CC) $(FLAGS) ./src/server/src/network/commands/client_connection_session_network.cpp 
+$(OBJDIR)/client_connection_session_network.o: ./src/server/src/network/commands/client_connection_session_network.cpp
+	$(CC) $(FLAGS) ./src/server/src/network/commands/client_connection_session_network.cpp -o $(OBJDIR)/client_connection_session_network.o
 
-server.o: ./src/server/src/server.cpp
-	$(CC) $(FLAGS) ./src/server/src/server.cpp 
+$(OBJDIR)/server.o: ./src/server/src/server.cpp
+	$(CC) $(FLAGS) ./src/server/src/server.cpp -o $(OBJDIR)/server.o
 
-server_handler_new_sessions.o: ./src/server/src/server_handler_new_sessions.cpp
-	$(CC) $(FLAGS) ./src/server/src/server_handler_new_sessions.cpp 
+$(OBJDIR)/server_handler_new_sessions.o: ./src/server/src/server_handler_new_sessions.cpp
+	$(CC) $(FLAGS) ./src/server/src/server_handler_new_sessions.cpp -o $(OBJDIR)/server_handler_new_sessions.o
 
+$(OBJDIR)/application.o: ./src/client/src/application.cpp
+	$(CC) $(FLAGS) ./src/client/src/application.cpp -o $(OBJDIR)/application.o
 
-application.o: ./src/client/src/application.cpp
-	$(CC) $(FLAGS) ./src/client/src/application.cpp 
+$(OBJDIR)/cmain.o: ./src/client/src/main.cpp
+	$(CC) $(FLAGS) ./src/client/src/main.cpp -o $(OBJDIR)/cmain.o
 
-cmain.o: ./src/client/src/main.cpp
-	$(CC) $(FLAGS) ./src/client/src/main.cpp -o cmain.o
+$(OBJDIR)/client_network_handler.o: ./src/client/src/network/client_network_handler.cpp
+	$(CC) $(FLAGS) ./src/client/src/network/client_network_handler.cpp -o $(OBJDIR)/client_network_handler.o
 
-client_network_handler.o: ./src/client/src/network/client_network_handler.cpp
-	$(CC) $(FLAGS) ./src/client/src/network/client_network_handler.cpp 
+$(OBJDIR)/network_commands_client.o: ./src/client/src/network/network_commands_client.cpp
+	$(CC) $(FLAGS) ./src/client/src/network/network_commands_client.cpp -o $(OBJDIR)/network_commands_client.o
 
-network_commands_client.o: ./src/client/src/network/network_commands_client.cpp
-	$(CC) $(FLAGS) ./src/client/src/network/network_commands_client.cpp 
+$(OBJDIR)/network_commands_server.o: ./src/client/src/network/network_commands_server.cpp
+	$(CC) $(FLAGS) ./src/client/src/network/network_commands_server.cpp -o $(OBJDIR)/network_commands_server.o
 
-network_commands_server.o: ./src/client/src/network/network_commands_server.cpp
-	$(CC) $(FLAGS) ./src/client/src/network/network_commands_server.cpp 
+$(OBJDIR)/client_ui_handler.o: ./src/client/src/ui/client_ui_handler.cpp
+	$(CC) $(FLAGS) ./src/client/src/ui/client_ui_handler.cpp -o $(OBJDIR)/client_ui_handler.o
 
-client_ui_handler.o: ./src/client/src/ui/client_ui_handler.cpp
-	$(CC) $(FLAGS) ./src/client/src/ui/client_ui_handler.cpp 
+$(OBJDIR)/handler.o: ./src/client/src/inotify/handler.cpp
+	$(CC) $(FLAGS) ./src/client/src/inotify/handler.cpp -o $(OBJDIR)/handler.o
 
-handler.o: ./src/client/src/inotify/handler.cpp
-	$(CC) $(FLAGS) ./src/client/src/inotify/handler.cpp
+$(OBJDIR)/inotify_watcher.o: ./src/common/include/inotify_watcher.cpp
+	$(CC) $(FLAGS) ./src/common/include/inotify_watcher.cpp -o $(OBJDIR)/inotify_watcher.o
 
-inotify_watcher.o: ./src/common/include/inotify_watcher.cpp
-	$(CC) $(FLAGS) ./src/common/include/inotify_watcher.cpp 
+$(OBJDIR)/async_cout.o: ./src/common/include/asyncio/async_cout.cpp
+	$(CC) $(FLAGS) ./src/common/include/asyncio/async_cout.cpp -o $(OBJDIR)/async_cout.o
 
-async_cout.o: ./src/common/include/asyncio/async_cout.cpp
-	$(CC) $(FLAGS) ./src/common/include/asyncio/async_cout.cpp 
+$(OBJDIR)/user_interface.o: ./src/common/include/asyncio/user_interface.cpp
+	$(CC) $(FLAGS) ./src/common/include/asyncio/user_interface.cpp -o $(OBJDIR)/user_interface.o
 
-user_interface.o: ./src/common/include/asyncio/user_interface.cpp
-	$(CC) $(FLAGS) ./src/common/include/asyncio/user_interface.cpp 
+$(OBJDIR)/logging.o: ./src/common/include/network/logging.cpp
+	$(CC) $(FLAGS) ./src/common/include/network/logging.cpp -o $(OBJDIR)/logging.o
 
-logging.o: ./src/common/include/network/logging.cpp
-	$(CC) $(FLAGS) ./src/common/include/network/logging.cpp 
+$(OBJDIR)/connection_manager.o: ./src/common/include/network/connection_manager.cpp
+	$(CC) $(FLAGS) ./src/common/include/network/connection_manager.cpp -o $(OBJDIR)/connection_manager.o
 
-connection_manager.o: ./src/common/include/network/connection_manager.cpp
-	$(CC) $(FLAGS) ./src/common/include/network/connection_manager.cpp 
+$(OBJDIR)/server_commands.o: ./src/common/include/network/server_commands.cpp
+	$(CC) $(FLAGS) ./src/common/include/network/server_commands.cpp -o $(OBJDIR)/server_commands.o
 
-server_commands.o: ./src/common/include/network/server_commands.cpp
-	$(CC) $(FLAGS) ./src/common/include/network/server_commands.cpp 
+$(OBJDIR)/socket_commands.o: ./src/common/include/network/socket_commands.cpp
+	$(CC) $(FLAGS) ./src/common/include/network/socket_commands.cpp -o $(OBJDIR)/socket_commands.o
 
-socket_commands.o: ./src/common/include/network/socket_commands.cpp
-	$(CC) $(FLAGS) ./src/common/include/network/socket_commands.cpp 
+$(OBJDIR)/client_commands.o: ./src/common/include/network/client_commands.cpp
+	$(CC) $(FLAGS) ./src/common/include/network/client_commands.cpp -o $(OBJDIR)/client_commands.o
 
-client_commands.o: ./src/common/include/network/client_commands.cpp
-	$(CC) $(FLAGS) ./src/common/include/network/client_commands.cpp 
+$(OBJDIR)/packet.o: ./src/common/include/network/packet.cpp
+	$(CC) $(FLAGS) ./src/common/include/network/packet.cpp -o $(OBJDIR)/packet.o
 
-packet.o: ./src/common/include/network/packet.cpp
-	$(CC) $(FLAGS) ./src/common/include/network/packet.cpp 
-
-utils.o: ./src/common/include/utils.cpp
-	$(CC) $(FLAGS) ./src/common/include/utils.cpp 
-
+$(OBJDIR)/utils.o: ./src/common/include/utils.cpp
+	$(CC) $(FLAGS) ./src/common/include/utils.cpp -o $(OBJDIR)/utils.o
 
 clean:
 	rm -f $(OBJS) $(OUT) $(OBJS0) $(OUT0) $(OBJS1) $(OUT1) $(OBJS2) $(OUT2)

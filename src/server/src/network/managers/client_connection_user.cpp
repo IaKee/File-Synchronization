@@ -217,21 +217,23 @@ void User::overseer_loop()
     while(overseer_running_.load() == true)
     {
         // every minute, checks if sessions are alive
-        std::this_thread::sleep_for(std::chrono::seconds(60));
+        std::this_thread::sleep_for(std::chrono::seconds(1));
 
         for(client_connection::ClientSession* session : sessions_)
         {
       
             std::chrono::high_resolution_clock::time_point now = std::chrono::high_resolution_clock::now();
-            std::chrono::minutes minutes_passed = std::chrono::duration_cast<std::chrono::minutes>(now - session->get_last_ping());
+            std::chrono::duration<double> seconds_passed = std::chrono::duration_cast<std::chrono::duration<double>>(now - session->get_last_ping());
+            printf("%f\n", seconds_passed.count());
 
             session->send_ping();
 
-            // if(minutes_passed.count() > 5)
-            // {
-            //     // 5 minutes passed, nukes session
-            //     session->disconnect("Kicked due to inactivity");
-            // }
+            if(seconds_passed.count() > 3.0f)
+            {
+                // 5 seconds passed, nukes session
+                session->disconnect("Kicked due to inactivity");
+                printf("Tomou dc");
+            }
             // else
             // {
             //     // tries renew timer by pinging session

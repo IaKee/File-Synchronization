@@ -92,7 +92,7 @@ void ConnectionManager::receive_data(char *buffer, std::size_t buffer_size, int 
         }
         else if (bytes_received == 0)
         {
-            raise("Connection terminated by remote host!");
+            // raise("Connection terminated by remote host!");
         }
         else
         {

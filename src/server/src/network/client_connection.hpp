@@ -104,7 +104,7 @@ namespace client_connection
 
             // timing
             std::chrono::high_resolution_clock::time_point ping_start_;
-            std::chrono::high_resolution_clock::time_point last_ping_;
+            std::chrono::high_resolution_clock::time_point last_ping_ = std::chrono::high_resolution_clock::now();
             
             // callbacks
             std::function<void(const packet& p, int sockfd, int timeout)> send_callback_;

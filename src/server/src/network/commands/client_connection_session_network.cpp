@@ -84,6 +84,7 @@ void ClientSession::session_receiver_loop()
                     else if(command_name == "pong")
                     {
                         // received ping response from user
+                        this->last_ping_ = std::chrono::high_resolution_clock::now();
                         this->client_responded_ping_();
                         break;
                     }
