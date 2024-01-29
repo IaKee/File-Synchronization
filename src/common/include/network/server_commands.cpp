@@ -86,7 +86,8 @@ void ServerConnectionManager::stop_accept_loop()
 }
 
 void ServerConnectionManager::server_accept_loop(
-    std::function<void(int, std::string, std::string)> connection_stablished_callback)
+    std::function<void(int, std::string, std::string)> connection_stablished_callback,
+    std::function<void(int, std::string, std::string)> connection_stablished_callback2)
 {
     aprint("Starting server accept loop...", 2);
 
@@ -281,5 +282,49 @@ void ServerConnectionManager::server_accept_loop(
     catch (...)
     {
         raise("Unknown error occured on server accept loop!", 2);
+    }
+}
+
+
+void ServerConnectionManager::add_servers()
+{
+    std::ifstream file ("./server-config");
+    if (file.is_open()) 
+    {
+        std::string line;
+        std::getline(file, line);
+        int timeout = std::stoi(line.substr(line.find("=")+2, -1));
+        sleep(timeout);
+
+        std::getline(file, line);
+        while(!file.eof())
+        {
+            std::getline (file, line);
+            if(!line.empty())
+            {
+                std::string ip = strtok((char *) line.c_str(), " ");
+                int port = std::stoi(strtok(NULL, " "));
+                std::pair<std::string, int> address = std::make_pair(ip, port);
+
+                int key = std::stoi(strtok(NULL, " "));
+                bool cordinator = false;
+                int socket = 0;
+
+                if(strtok(NULL, " ") == NULL)
+                {
+                    Server_info server = { address, key, cordinator, socket };
+                    this->server_backups_address_.emplace_back(server);
+                }
+                else
+                {
+                    this->coordinator = false;
+                    this->key = key;
+                }
+            }
+        }
+    }
+    else
+    {
+        aprint("Falha ao ler configs");
     }
 }

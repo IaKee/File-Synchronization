@@ -72,7 +72,56 @@ void ClientSession::client_responded_ping_()
     
     std::string output = get_identifier() + " Pinged with a response time of ";
     output += std::to_string(ping_ms) + "ms.";
+    // uncomment line below for aprint of ping response
+    // aprint(output, 2);
+}
+
+void ClientSession::server_requested_ping_()
+{
+    // server is measuring connection ping with server
+    // mounts a response packet and adds to send queue
+    packet pong_packet;
+    std::string command_string = "pong";
+    strcharray(command_string, pong_packet.command, sizeof(pong_packet.command));
+    
+    // adds to sender buffer
+    {
+        std::unique_lock<std::mutex> lock(send_mtx_);
+        sender_buffer_.push_back(pong_packet);
+    }
+    send_cv_.notify_one();
+}
+
+void ClientSession::server_responded_ping_()
+{
+    // received ping response from server
+    auto ping_end = std::chrono::high_resolution_clock::now();
+    auto ping_val = std::chrono::duration_cast<
+        std::chrono::microseconds>(ping_end - ping_start_);
+    double ping_ms = ping_val.count() / 1000.0; // Em milissegundos
+    
+    std::string output = get_identifier() + " Server pinged with a response time of ";
+    output += std::to_string(ping_ms) + "ms.";
+    // uncomment line below for aprint of ping response
     aprint(output, 2);
+}
+
+void ClientSession::server_requested_election_()
+{
+    // server received election from another server
+    // if it is backup, must answer the server with answer
+    // else answer with coordinator
+    
+}
+
+void ClientSession::server_requested_answer_()
+{
+
+}
+
+void ClientSession::server_requested_coordinator_()
+{
+    
 }
 
 void ClientSession::client_requested_delete_(std::string args, packet buffer, std::string arg2)

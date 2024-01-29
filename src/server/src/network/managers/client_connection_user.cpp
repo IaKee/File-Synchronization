@@ -224,7 +224,7 @@ void User::overseer_loop()
       
             std::chrono::high_resolution_clock::time_point now = std::chrono::high_resolution_clock::now();
             std::chrono::duration<double> seconds_passed = std::chrono::duration_cast<std::chrono::duration<double>>(now - session->get_last_ping());
-            printf("%f\n", seconds_passed.count());
+            // printf("%f\n", seconds_passed.count());
 
             session->send_ping();
 

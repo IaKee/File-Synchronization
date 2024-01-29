@@ -105,6 +105,19 @@ namespace client_connection
             // timing
             std::chrono::high_resolution_clock::time_point ping_start_;
             std::chrono::high_resolution_clock::time_point last_ping_ = std::chrono::high_resolution_clock::now();
+
+            // timeout election variables
+            std::chrono::high_resolution_clock::time_point waiting_coordinator_timeout_;
+            std::chrono::high_resolution_clock::time_point waiting_answer_timeout_;
+            std::chrono::high_resolution_clock::time_point waiting_pong_timeout_;
+
+            // election control variables
+            int max_answer_waiting_ = 3;
+            int max_coordinator_waiting = 3;
+            int max_ping_waiting = 3;
+            bool in_election_ = false;
+            bool waiting_coordinator_ = false;
+            bool waiting_answer_ = false;
             
             // callbacks
             std::function<void(const packet& p, int sockfd, int timeout)> send_callback_;
@@ -117,6 +130,11 @@ namespace client_connection
             void client_requested_logout_();
             void client_requested_ping_();
             void client_responded_ping_();
+            void server_requested_ping_();
+            void server_responded_ping_();
+            void server_requested_election_();
+            void server_requested_answer_();
+            void server_requested_coordinator_();
             void client_requested_delete_(std::string args, packet buffer, std::string arg2 = "");
             void client_requested_slist_();
             void client_requested_flist_();

@@ -14,6 +14,7 @@
 
 // locals
 #include "./network/client_connection.hpp"
+#include "./network/server_connection.hpp"
 #include "../../common/include/utils.hpp"
 #include "../../common/include/asyncio/async_cout.hpp"
 #include "../../common/include/asyncio/user_interface.hpp"
@@ -33,7 +34,10 @@ Server::Server()
 		stop_requested_(false),
 		client_manager_(
 			std::bind(&connection::ServerConnectionManager::send_packet, &internet_manager, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), 
-			std::bind(&connection::ServerConnectionManager::receive_packet, &internet_manager, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3))
+			std::bind(&connection::ServerConnectionManager::receive_packet, &internet_manager, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3)),
+		server_manager_(
+		std::bind(&connection::ServerConnectionManager::send_packet, &internet_manager, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), 
+		std::bind(&connection::ServerConnectionManager::receive_packet, &internet_manager, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3))
 {
 	// init sequence
 	std::string machine_name = get_machine_name();
@@ -50,8 +54,9 @@ Server::Server()
 			aprint("Initializing server (root) files directory...");
 		}
 	}
-	
 	internet_manager.create_socket();
+	internet_manager.add_servers();
+	aprint(internet_manager.get_first_address().first + " " + std::to_string(internet_manager.get_first_address().second));
 
 	// set defaut port
 	int new_port = 65535;
@@ -98,6 +103,10 @@ void Server::start()
 				[this](int new_socket, std::string username, std::string machine)
 				{
 					handle_new_session(new_socket, username, machine);
+				},
+				[this](int new_socket, std::string username, std::string machine)
+				{
+					handle_new_server(new_socket, username, machine);
 				});
     	});
 

@@ -16,6 +16,7 @@
 
 // locals
 #include "./network/client_connection.hpp"
+#include "./network/server_connection.hpp"
 #include "../../common/include/network/connection_manager.hpp"
 #include "../../common/include/asyncio/user_interface.hpp"
 #include "../../common/include/utils.hpp"
@@ -45,6 +46,7 @@ namespace server
             void stop();
             void close();
             void handle_new_session(int new_socket, std::string username, std::string machine);
+            void handle_new_server(int new_socket, std::string username, std::string machine);
             void process_input();
             void main_loop();
  
@@ -66,5 +68,7 @@ namespace server
             // modules
             user_interface::UserInterface S_UI_;
             client_connection::UserGroup client_manager_;
+            server_connection::ServerGroup server_manager_;
+            
     };
 }

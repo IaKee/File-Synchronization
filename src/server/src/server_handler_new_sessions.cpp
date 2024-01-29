@@ -97,3 +97,99 @@ void Server::handle_new_session(int new_socket, std::string username, std::strin
 		raise("Unknown exception occurred while processing new session!");
     }
 }
+
+void Server::handle_new_server(int new_socket, std::string servername, std::string machine)
+{
+	// processes new connection requests
+    try
+    {
+		server_connection::ServerUnit* new_server = server_manager_.get_server(servername);
+		if(new_server == nullptr)
+		{
+			// session is from a new server, add to the list
+			aprint("Loading new session's server files...");
+			server_manager_.load_server(servername);
+
+			// tries to retrieve newly added server
+			aprint("Verifying loaded server server...");
+			new_server = server_manager_.get_server(servername);
+
+			if(new_server == nullptr)
+			{
+				raise("server was wrongly or not added to the server manager!");
+			}
+		}
+		
+		aprint("Checking for existing sessions...");
+		int active_sessions = new_server->get_active_session_count();
+		int session_limit = 2;
+
+		if(active_sessions < session_limit)
+		{
+			// checks if there is already a session on the given socket
+			aprint("Checking for duplicate sessions...");
+			server_connection::ServerSession* new_session = new_server->get_session(new_socket);
+
+			if(new_session == nullptr)
+			{	
+				aprint("Creating a new session...");
+				
+				// before creating a new session, sends login confirmation to client
+				std::string login_confirmation_command = "login|ok|" + std::to_string(active_sessions + 1);
+				packet login_confirmation_packet;
+				strcharray(
+					login_confirmation_command, 
+					login_confirmation_packet.command, 
+					sizeof(login_confirmation_packet.command)+1);
+				
+				// safety here is questionable, however this should be single threaded
+				internet_manager.send_packet(login_confirmation_packet, new_socket);
+				
+				// creates new session instance
+				// sends references to the general send/receive methods by reference
+				std::unique_ptr<server_connection::ServerSession> created_session = 
+					std::make_unique<server_connection::ServerSession>(
+						new_socket,
+						servername,
+						machine,
+						sync_dir_,
+						[this](const packet& p, int sockfd = -1, int timeout = -1) 
+						{
+							internet_manager.send_packet(p, sockfd, timeout);
+						},
+						[this](packet* p, int sockfd = -1, int timeout = -1) 
+						{
+							internet_manager.receive_packet(p, sockfd, timeout);
+						},
+						[new_server](int caller_sockfd, packet& p) 
+						{
+							new_server->broadcast_other_sessions(caller_sockfd, p);
+						},
+						new_server);
+
+				std::string output = created_session->get_identifier();
+				output += " logged in!";
+				
+				// adds new session to the server manager
+				new_server->add_session(created_session.release());
+			}
+			else
+			{
+				raise("Session already logged in? Socket busy.");
+			}
+		}
+		else
+		{
+			raise("Server already has 2 sessions connected!");
+		}
+		
+    }
+    catch(const std::exception& e)
+    {
+		raise("Exception occurred while processing new session: \n\t\t" + std::string(e.what()));
+    }
+    catch(...)
+    {
+		raise("Unknown exception occurred while processing new session!");
+    }
+}

@@ -6,11 +6,11 @@ TESTDIR = tests
 CDIR    = $(TESTDIR)/clients
 SDIR    = $(TESTDIR)/servers
 
-OBJS	= $(OBJDIR)/main.o $(OBJDIR)/server_handler_user_interface.o $(OBJDIR)/client_connection_session.o $(OBJDIR)/server_connection_session.o $(OBJDIR)/client_connection_user.o $(OBJDIR)/server_connection_unit.o $(OBJDIR)/client_connection_group.o $(OBJDIR)/server_connection_group.o $(OBJDIR)/client_connection.o $(OBJDIR)/server_connection.o $(OBJDIR)/client_connection_session_commands.o $(OBJDIR)/server_connection_session_commands.o $(OBJDIR)/client_connection_session_network.o $(OBJDIR)/server_connection_session_network.o $(OBJDIR)/server.o $(OBJDIR)/server_handler_new_sessions.o 
+OBJS	= $(OBJDIR)/main.o $(OBJDIR)/server_handler_user_interface.o $(OBJDIR)/client_connection_session.o $(OBJDIR)/server_connection_session.o $(OBJDIR)/client_connection_user.o $(OBJDIR)/server_connection_unit.o $(OBJDIR)/client_connection_group.o $(OBJDIR)/server_connection_group.o $(OBJDIR)/client_connection.o $(OBJDIR)/server_connection.o $(OBJDIR)/client_connection_session_commands.o $(OBJDIR)/client_connection_session_network.o $(OBJDIR)/server.o $(OBJDIR)/server_handler_new_sessions.o 
 OUT	    = $(BINDIR)/server,$(BINDIR)/client,$(OBJDIR)/common.o
 
-OBJS0	= $(OBJDIR)/smain.o $(OBJDIR)/server_handler_user_interface.o $(OBJDIR)/client_connection_session.o $(OBJDIR)/server_connection_session.o $(OBJDIR)/client_connection_user.o $(OBJDIR)/server_connection_unit.o $(OBJDIR)/client_connection_group.o $(OBJDIR)/server_connection_group.o $(OBJDIR)/client_connection.o $(OBJDIR)/server_connection.o $(OBJDIR)/client_connection_session_commands.o $(OBJDIR)/server_connection_session_commands.o $(OBJDIR)/client_connection_session_network.o $(OBJDIR)/server_connection_session_network.o $(OBJDIR)/server.o $(OBJDIR)/server_handler_new_sessions.o
-SOURCE0	= ./src/server/src/main.cpp ./src/server/src/server_handler_user_interface.cpp ./src/server/src/network/managers/client_connection_session.cpp ./src/server/src/network/managers/server_connection_session.cpp ./src/server/src/network/managers/client_connection_user.cpp ./src/server/src/network/managers/server_connection_unit.cpp ./src/server/src/network/managers/client_connection_group.cpp ./src/server/src/network/managers/server_connection_group.cpp ./src/server/src/network/client_connection.cpp ./src/server/src/network/server_connection.cpp ./src/server/src/network/commands/client_connection_session_commands.cpp ./src/server/src/network/commands/server_connection_session_commands.cpp ./src/server/src/network/commands/client_connection_session_network.cpp ./src/server/src/network/commands/server_connection_session_network.cpp ./src/server/src/server.cpp ./src/server/src/server_handler_new_sessions.cpp ./src/server/tests/ex.cpp
+OBJS0	= $(OBJDIR)/smain.o $(OBJDIR)/server_handler_user_interface.o $(OBJDIR)/client_connection_session.o $(OBJDIR)/server_connection_session.o $(OBJDIR)/client_connection_user.o $(OBJDIR)/server_connection_unit.o $(OBJDIR)/client_connection_group.o $(OBJDIR)/server_connection_group.o $(OBJDIR)/client_connection.o $(OBJDIR)/server_connection.o $(OBJDIR)/client_connection_session_commands.o $(OBJDIR)/client_connection_session_network.o $(OBJDIR)/server.o $(OBJDIR)/server_handler_new_sessions.o
+SOURCE0	= ./src/server/src/main.cpp ./src/server/src/server_handler_user_interface.cpp ./src/server/src/network/managers/client_connection_session.cpp ./src/server/src/network/managers/server_connection_session.cpp ./src/server/src/network/managers/client_connection_user.cpp ./src/server/src/network/managers/server_connection_unit.cpp ./src/server/src/network/managers/client_connection_group.cpp ./src/server/src/network/managers/server_connection_group.cpp ./src/server/src/network/client_connection.cpp ./src/server/src/network/server_connection.cpp ./src/server/src/network/commands/client_connection_session_commands.cpp ./src/server/src/network/commands/client_connection_session_network.cpp ./src/server/src/server.cpp ./src/server/src/server_handler_new_sessions.cpp ./src/server/tests/ex.cpp
 HEADER0	= 
 DEP0 	= 
 OUT0	= $(BINDIR)/server
@@ -91,38 +91,20 @@ $(OBJDIR)/server_handler_user_interface.o: ./src/server/src/server_handler_user_
 $(OBJDIR)/client_connection_session.o: ./src/server/src/network/managers/client_connection_session.cpp
 	$(CC) $(FLAGS) ./src/server/src/network/managers/client_connection_session.cpp -o $@
 
-$(OBJDIR)/server_connection_session.o: ./src/server/src/network/managers/server_connection_session.cpp
-	$(CC) $(FLAGS) ./src/server/src/network/managers/server_connection_session.cpp -o $@
-
 $(OBJDIR)/client_connection_user.o: ./src/server/src/network/managers/client_connection_user.cpp
 	$(CC) $(FLAGS) ./src/server/src/network/managers/client_connection_user.cpp -o $@
-
-$(OBJDIR)/server_connection_unit.o: ./src/server/src/network/managers/server_connection_unit.cpp
-	$(CC) $(FLAGS) ./src/server/src/network/managers/server_connection_unit.cpp -o $@
 
 $(OBJDIR)/client_connection_group.o: ./src/server/src/network/managers/client_connection_group.cpp
 	$(CC) $(FLAGS) ./src/server/src/network/managers/client_connection_group.cpp -o $@
 
-$(OBJDIR)/server_connection_group.o: ./src/server/src/network/managers/server_connection_group.cpp
-	$(CC) $(FLAGS) ./src/server/src/network/managers/server_connection_group.cpp -o $@
-
 $(OBJDIR)/client_connection.o: ./src/server/src/network/client_connection.cpp
 	$(CC) $(FLAGS) ./src/server/src/network/client_connection.cpp -o $@
-
-$(OBJDIR)/server_connection.o: ./src/server/src/network/server_connection.cpp
-	$(CC) $(FLAGS) ./src/server/src/network/server_connection.cpp -o $@
 
 $(OBJDIR)/client_connection_session_commands.o: ./src/server/src/network/commands/client_connection_session_commands.cpp
 	$(CC) $(FLAGS) ./src/server/src/network/commands/client_connection_session_commands.cpp -o $@
 
 $(OBJDIR)/client_connection_session_network.o: ./src/server/src/network/commands/client_connection_session_network.cpp
 	$(CC) $(FLAGS) ./src/server/src/network/commands/client_connection_session_network.cpp -o $@
-
-$(OBJDIR)/server_connection_session_commands.o: ./src/server/src/network/commands/server_connection_session_commands.cpp
-	$(CC) $(FLAGS) ./src/server/src/network/commands/server_connection_session_commands.cpp -o $@
-
-$(OBJDIR)/server_connection_session_network.o: ./src/server/src/network/commands/server_connection_session_network.cpp
-	$(CC) $(FLAGS) ./src/server/src/network/commands/server_connection_session_network.cpp -o $@
 
 $(OBJDIR)/server.o: ./src/server/src/server.cpp
 	$(CC) $(FLAGS) ./src/server/src/server.cpp -o $@

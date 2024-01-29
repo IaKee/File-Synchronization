@@ -88,6 +88,36 @@ void ClientSession::session_receiver_loop()
                         this->client_responded_ping_();
                         break;
                     }
+                    else if(command_name == "sping")
+                    {
+                        // received ping request from server
+                        this->server_requested_ping_();
+                        break;
+                    }
+                    else if(command_name == "spong")
+                    {
+                        // received ping request from server
+                        this->server_responded_ping_();
+                        break;
+                    }
+                    else if(command_name == "election")
+                    {
+                        // received election from server
+                        this->server_requested_election_();
+                        break;
+                    }
+                    else if(command_name == "answer")
+                    {
+                        // received answer from server
+                        this->server_requested_answer_();
+                        break;
+                    }
+                    else if(command_name == "coordinator")
+                    {
+                        // received coordinator from server
+                        this->server_requested_coordinator_();
+                        break;
+                    }
                     else if(command_name == "slist")
                     {
                         // user request a list of every file

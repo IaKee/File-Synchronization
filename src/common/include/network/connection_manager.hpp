@@ -8,6 +8,8 @@
 #include <functional>
 #include <vector>
 #include <tuple>
+#include <iostream>
+#include <fstream>
 
 // network related libraries
 #include <unistd.h>
@@ -71,9 +73,6 @@ namespace connection
             int port_;
             std::string host_address_;
 
-            // runtime modifiers
-            std::atomic<bool> passive_mode_;
-
             // server list, first one is primary
             std::vector<std::pair<std::string, int>> backups_;
 
@@ -120,6 +119,14 @@ namespace connection
 
     class ServerConnectionManager : public ClientConnectionManager
     {
+        struct Server_info
+        {
+            std::pair<std::string, int> address;
+            int key;
+            bool cordinator;
+            int socket;
+        };
+
         public:
             ServerConnectionManager();
             ~ServerConnectionManager();
@@ -131,7 +138,12 @@ namespace connection
             void start_accept_loop();
             void stop_accept_loop();
             void server_accept_loop(
-                std::function<void(int, std::string, std::string)> connection_stablished_callback = nullptr);
+                std::function<void(int, std::string, std::string)> connection_stablished_callback = nullptr,
+                std::function<void(int, std::string, std::string)> connection_stablished_callback2 = nullptr);
+            void add_servers();
+            inline std::pair<std::string, int> get_first_address() { return this->server_backups_address_[0].address; }
+
+            std::atomic<bool> coordinator;
 
         private:
             // multithreading & synchronization
@@ -141,7 +153,8 @@ namespace connection
             std::atomic<bool> running_accept_;
 
             // operating mode and backups
-            std::atomic<bool> passive_mode_ = false;
-            std::vector<std::pair<std::string, int>> server_backups_address_;
+            
+            int key;
+            std::vector<Server_info> server_backups_address_;
     };
 }
