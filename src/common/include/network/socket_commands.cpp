@@ -1,5 +1,6 @@
 #include "connection_manager.hpp"
 #include <functional>
+#include <csignal>
 
 using namespace connection;
 
@@ -97,6 +98,8 @@ void ConnectionManager::receive_data(char *buffer, std::size_t buffer_size, int 
         }
         else
         {
+            // teste pra ver se resolvemos o problema do crash quando cliente sai com CTRL+C FAE
+            // std::signal(SIGPIPE, SIG_IGN);
             raise("Error recieving buffer on socket " + std::to_string(socket) + "!");
         }
     }

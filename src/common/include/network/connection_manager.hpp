@@ -123,13 +123,17 @@ namespace connection
         {
             std::pair<std::string, int> address;
             int key;
-            bool cordinator;
+            bool coordinator;
             int socket;
         };
 
         public:
             ServerConnectionManager();
             ~ServerConnectionManager();
+
+            // server to server connection functions
+            void sconnect_to_server(std::string ip_address, int port);
+            int slogin(std::string username, std::string machine_name);
 
             // start main server functions - opens main socket for further connections
             void open_server();
@@ -140,10 +144,16 @@ namespace connection
             void server_accept_loop(
                 std::function<void(int, std::string, std::string)> connection_stablished_callback = nullptr,
                 std::function<void(int, std::string, std::string)> connection_stablished_callback2 = nullptr);
-            void add_servers();
-            inline std::pair<std::string, int> get_first_address() { return this->server_backups_address_[0].address; }
+            void server_accept_loop(
+                std::function<void(int, std::string, std::string)> connection_stablished_callback = nullptr);
 
-            std::atomic<bool> coordinator;
+            void add_servers();
+            int get_coordinator();
+
+            inline std::pair<std::string, int> get_first_address() { return this->server_backups_address_[0].address; }
+            inline int get_key() { return this->key; }
+            inline bool is_coordinator() { return this->coordinator.load(); }
+            
 
         private:
             // multithreading & synchronization
@@ -156,5 +166,6 @@ namespace connection
             
             int key;
             std::vector<Server_info> server_backups_address_;
+            std::atomic<bool> coordinator;
     };
 }

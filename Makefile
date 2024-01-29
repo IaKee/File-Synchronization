@@ -49,6 +49,10 @@ server2: $(SDIR) $(BINDIR)/server
 	cd $(SDIR)/server2; \
 	../../../$(BINDIR)/server;
 
+server3: $(SDIR) $(BINDIR)/server
+	cd $(SDIR)/server3; \
+	../../../$(BINDIR)/server;
+
 test: $(CDIR) $(SDIR) all
 	tmux new-session -s "server" -d "cd $(SDIR)/server1 && ../../../$(BINDIR)/server; read"
 	tmux split-window -h "sleep 2 && cd $(CDIR)/client1 && ../../../$(BINDIR)/client iakee 0.0.0.0 65535; read"
@@ -81,6 +85,7 @@ $(SDIR): $(TESTDIR)
 	mkdir -p $@
 	mkdir -p $@/server1
 	mkdir -p $@/server2
+	mkdir -p $@/server3
 
 $(OBJDIR)/smain.o: ./src/server/src/main.cpp
 	$(CC) $(FLAGS) ./src/server/src/main.cpp -o $@

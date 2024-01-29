@@ -23,12 +23,12 @@
 
 using json = nlohmann::json;
 
-namespace server
+namespace front_end
 {
     void aprint(std::string content, bool endl = true);
     void raise(std::string error);
     
-    class Server
+    class Front_end
     {
         public:
             // synchronization
@@ -38,8 +38,8 @@ namespace server
             std::vector<std::string> ui_sanitized_buffer;
 
             // init & destroy
-            Server();
-            ~Server();
+            Front_end();
+            ~Front_end();
 
             // some attributes like the client ones
             // std::string username_;
@@ -50,8 +50,6 @@ namespace server
             void stop();
             void close();
             void handle_new_session(int new_socket, std::string username, std::string machine);
-            void handle_new_server(int new_socket, std::string username, std::string machine);
-            void process_input();
             void main_loop();
  
             // modules
@@ -60,11 +58,6 @@ namespace server
             // runtime control
             std::atomic<bool> running_;
             std::atomic<bool> stop_requested_;
-
-            // other attributes
-            std::string client_default_path_;
-            std::string sync_dir_ = "./sync_dir_server";
-            std::string default_port_;
 
             // threads
             std::thread accept_th_;

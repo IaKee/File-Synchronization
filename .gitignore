@@ -7,3 +7,7 @@ sync_dir_server
 *client
 *server
 *.vscode
+id_rsa
+id_rsa.pub
+known_hosts
+FAE.txt
